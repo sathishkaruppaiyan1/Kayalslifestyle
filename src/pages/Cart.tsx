@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Minus, Plus, ShoppingBag, ArrowLeft, Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Minus, Plus, ShoppingBag, ArrowLeft, Trash, CircleNotch, Warning } from "@phosphor-icons/react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { useCart, type StockIssue } from "@/contexts/CartContext";
@@ -56,7 +56,7 @@ const Cart = () => {
             {stockIssues.length > 0 && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-left">
                 <div className="flex items-center gap-2 text-red-700 font-bold mb-2">
-                  <AlertTriangle className="h-4 w-4" />
+                  <Warning className="h-4 w-4" />
                   Items were removed from your cart
                 </div>
                 {stockIssues.map((issue, idx) => (
@@ -91,7 +91,7 @@ const Cart = () => {
         {/* Stock validation banner */}
         {isValidating && (
           <div className="flex items-center gap-2 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <CircleNotch className="h-4 w-4 animate-spin" />
             Checking stock availability...
           </div>
         )}
@@ -99,7 +99,7 @@ const Cart = () => {
         {stockIssues.length > 0 && !isValidating && (
           <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
             <div className="flex items-center gap-2 text-amber-700 font-bold mb-2">
-              <AlertTriangle className="h-4 w-4" />
+              <Warning className="h-4 w-4" />
               Cart updated due to stock changes
             </div>
             {stockIssues.map((issue, idx) => (
@@ -155,7 +155,7 @@ const Cart = () => {
                             onClick={() => removeFromCart(item.product.id, item.size, item.color)}
                             className="text-sm text-muted-foreground hover:text-destructive transition-colors mt-3 flex items-center gap-2 group border border-black rounded-none px-2 py-1"
                           >
-                            <Trash2 className="h-4 w-4 group-hover:text-destructive transition-colors" />
+                            <Trash className="h-4 w-4 group-hover:text-destructive transition-colors" />
                             <span>Remove</span>
                           </button>
                         </div>
@@ -287,7 +287,7 @@ const Cart = () => {
                 >
                   {isValidating ? (
                     <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <CircleNotch className="h-4 w-4 animate-spin" />
                       Checking stock...
                     </span>
                   ) : (

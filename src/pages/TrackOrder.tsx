@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Package, Truck, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { CircleNotch, Package, Truck, CheckCircle, Clock, WarningCircle } from "@phosphor-icons/react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface OrderStatus {
@@ -161,7 +161,7 @@ const TrackOrder = () => {
                                 >
                                     {isLoading ? (
                                         <>
-                                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                            <CircleNotch className="mr-2 h-5 w-5 animate-spin" />
                                             Tracking...
                                         </>
                                     ) : (
@@ -173,7 +173,7 @@ const TrackOrder = () => {
 
                         {hasSearched && !orderStatus && !isLoading && (
                             <div className="text-center py-8 bg-gray-50 rounded-lg">
-                                <AlertCircle className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+                                <WarningCircle className="h-10 w-10 text-gray-400 mx-auto mb-3" />
                                 <h3 className="text-lg font-medium text-gray-900">No order found</h3>
                                 <p className="text-gray-500 max-w-xs mx-auto mt-1">
                                     Please check your Order ID and Billing Email and try again.
@@ -197,7 +197,7 @@ const TrackOrder = () => {
 
                                     {isCancelled ? (
                                         <div className="bg-red-50 border border-red-100 rounded-lg p-4 flex items-center gap-3 text-red-700">
-                                            <AlertCircle className="h-5 w-5" />
+                                            <WarningCircle className="h-5 w-5" />
                                             <span className="font-medium">This order has been {orderStatus.status.toLowerCase()}.</span>
                                         </div>
                                     ) : (

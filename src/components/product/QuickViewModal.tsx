@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { X, Minus, Plus } from "lucide-react";
+import { X, Minus, Plus } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { useQuickView } from "@/contexts/QuickViewContext";
 import { useCart } from "@/contexts/CartContext";

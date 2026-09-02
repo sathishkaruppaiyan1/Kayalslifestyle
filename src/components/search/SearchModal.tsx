@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { X, Loader2 } from "lucide-react";
+import { X, CircleNotch } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { useSearch } from "@/contexts/SearchContext";
 import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
@@ -110,7 +110,7 @@ const SearchModal = () => {
               </p>
             ) : isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <CircleNotch className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : products.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, Grid3X3, LayoutList, X, Loader2 } from "lucide-react";
+import { SlidersHorizontal, GridFour, ListBullets, X, CircleNotch } from "@phosphor-icons/react";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -273,14 +273,14 @@ const Collection = () => {
                     size="iconSm"
                     onClick={() => setGridView("grid")}
                   >
-                    <Grid3X3 className="h-4 w-4" />
+                    <GridFour className="h-4 w-4" />
                   </Button>
                   <Button
                     variant={gridView === "list" ? "secondary" : "ghost"}
                     size="iconSm"
                     onClick={() => setGridView("list")}
                   >
-                    <LayoutList className="h-4 w-4" />
+                    <ListBullets className="h-4 w-4" />
                   </Button>
                 </div>
 
@@ -451,7 +451,7 @@ const Collection = () => {
             {!isLoading && products.length > 0 && (
               <div ref={loadMoreRef} className="flex justify-center py-8">
                 {isFetchingNextPage && (
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <CircleNotch className="h-6 w-6 animate-spin text-muted-foreground" />
                 )}
               </div>
             )}

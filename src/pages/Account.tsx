@@ -8,7 +8,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Phone, MessageSquare, Package, MapPin, User, LogOut, Edit2, Save, X } from "lucide-react";
+import { CircleNotch, Phone, ChatText, Package, MapPin, User, SignOut, PencilSimple, FloppyDisk, X } from "@phosphor-icons/react";
 import { useUserOrders, type WooCommerceOrder } from "@/hooks/useWooCommerce";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -174,7 +174,7 @@ const Account = () => {
                 setOtp("");
               }}
             >
-              <LogOut className="mr-2 h-4 w-4" />
+              <SignOut className="mr-2 h-4 w-4" />
               Logout
             </Button>
           </div>
@@ -204,7 +204,7 @@ const Account = () => {
                 <CardContent>
                   {ordersLoading ? (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      <CircleNotch className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
                   ) : orders.length === 0 ? (
                     <div className="text-center py-12">
@@ -328,7 +328,7 @@ const Account = () => {
                         size="sm"
                         onClick={() => setIsEditingDetails(true)}
                       >
-                        <Edit2 className="mr-2 h-4 w-4" />
+                        <PencilSimple className="mr-2 h-4 w-4" />
                         Edit
                       </Button>
                     )}
@@ -382,13 +382,13 @@ const Account = () => {
                         >
                           {isLoading ? (
                             <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
                               Saving...
                             </>
                           ) : (
                             <>
-                              <Save className="mr-2 h-4 w-4" />
-                              Save Changes
+                              <FloppyDisk className="mr-2 h-4 w-4" />
+                              FloppyDisk Changes
                             </>
                           )}
                         </Button>
@@ -585,12 +585,12 @@ const Account = () => {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
                     Sending OTP...
                   </>
                 ) : (
                   <>
-                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <ChatText className="mr-2 h-4 w-4" />
                     Send OTP via WhatsApp
                   </>
                 )}
@@ -603,7 +603,7 @@ const Account = () => {
           <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
             <div className="text-center space-y-2">
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <MessageSquare className="w-8 h-8 text-green-600" />
+                <ChatText className="w-8 h-8 text-green-600" />
               </div>
               <h2 className="text-xl font-semibold">Enter OTP</h2>
               <p className="text-sm text-muted-foreground">
@@ -639,7 +639,7 @@ const Account = () => {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
                     Verifying...
                   </>
                 ) : (
@@ -690,8 +690,7 @@ const Account = () => {
               >
                 <path
                   strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
+                  strokeLinejoin="round"
                   d="M5 13l4 4L19 7"
                 />
               </svg>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { CaretDown, CaretUp } from "@phosphor-icons/react";
 
 const StorySection = () => {
   const [expanded, setExpanded] = useState(false);
@@ -17,7 +17,7 @@ const StorySection = () => {
             <div className="relative">
               <img
                 src="/founder.jpg"
-                alt="Usha Nandhini Saravanan - Founder of Black Lovers"
+                alt="Usha Nandhini Saravanan - Founder of Kayals Lifestyle"
                 className="w-72 md:w-80 lg:w-full max-w-sm rounded-2xl shadow-lg object-cover"
                 loading="lazy"
                 decoding="async"
@@ -26,7 +26,7 @@ const StorySection = () => {
               />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent rounded-b-2xl p-4 pt-10">
                 <p className="text-white font-heading font-semibold text-lg">Usha Nandhini Saravanan</p>
-                <p className="text-white/80 text-sm">Founder, Black Lovers</p>
+                <p className="text-white/80 text-sm">Founder, Kayals Lifestyle</p>
               </div>
             </div>
           </div>
@@ -37,7 +37,7 @@ const StorySection = () => {
               "Why not create a brand dedicated to people like me who love black?"
             </p>
             <p>
-              That's how <strong className="text-foreground">Black Lovers</strong> was born.
+              That's how <strong className="text-foreground">Kayals Lifestyle</strong> was born.
             </p>
             <p>
               I'm Usha Nandhini Saravanan, the founder of this brand. I was born and raised in Chennai in a simple lower-middle-class family. Growing up, life was never easy financially. From a young age, I was constantly told that education was the only way to build a secure future, so I focused entirely on studying and scoring well.
@@ -89,7 +89,7 @@ const StorySection = () => {
                 None of this would have been possible without our customers and followers. As an introvert who once never stepped out much, the love and support from our community gave me the courage to grow beyond my limits.
               </p>
               <p className="text-foreground font-medium italic">
-                My biggest dream is to open a premium flagship showroom in Chennai — a building fully designed around our brand identity, with an entire floor dedicated exclusively to Black Lovers and black collections.
+                My biggest dream is to open a premium flagship showroom in Chennai — a building fully designed around our brand identity, with an entire floor dedicated exclusively to Kayals Lifestyle and black collections.
               </p>
               <p>
                 And this is just the beginning. We still have a long way to go, and we are committed to improving every single day. Your feedback, trust, and support mean everything to us.
@@ -103,7 +103,7 @@ const StorySection = () => {
               <p className="text-muted-foreground italic">
                 With gratitude,<br />
                 Usha Nandhini Saravanan<br />
-                Founder, Black Lovers
+                Founder, Kayals Lifestyle
               </p>
             </div>
 
@@ -113,9 +113,9 @@ const StorySection = () => {
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#800000] hover:text-[#600000] transition-colors pt-1"
             >
               {expanded ? (
-                <>Read Less <ChevronUp className="w-4 h-4" /></>
+                <>Read Less <CaretUp className="w-4 h-4" /></>
               ) : (
-                <>Read Full Story <ChevronDown className="w-4 h-4" /></>
+                <>Read Full Story <CaretDown className="w-4 h-4" /></>
               )}
             </button>
           </div>

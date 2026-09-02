@@ -2,6 +2,7 @@ import Layout from "@/components/layout/Layout";
 import { useMemo, useEffect } from "react";
 
 import HeroBanner from "@/components/home/HeroBanner";
+import CategoryCarousel from "@/components/home/CategoryCarousel";
 import CategoryGrid from "@/components/home/CategoryGrid";
 import ProductSection from "@/components/home/ProductSection";
 import StorySection from "@/components/home/StorySection";
@@ -50,6 +51,8 @@ const Index = () => {
 
   return (
     <Layout>
+      {/* Circular category strip — sits above the hero, as on the reference site */}
+      <CategoryCarousel />
       <HeroBanner />
       {/* Categories load independently and show immediately */}
       <CategoryGrid />

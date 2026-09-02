@@ -1,4 +1,4 @@
-import { Play } from "lucide-react";
+import { Play } from "@phosphor-icons/react";
 import { Link } from "react-router-dom";
 
 const reels = [
@@ -55,7 +55,7 @@ const ShopByReels = () => {
                                 onMouseOut={(e) => e.currentTarget.pause()}
                             />
                             <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Play className="text-white fill-white h-12 w-12" />
+                                <Play className="text-white fill-white h-12 w-12"  weight="fill" />
                             </div>
 
                             <Link to={reel.productLink} className="absolute bottom-4 left-4 right-4">

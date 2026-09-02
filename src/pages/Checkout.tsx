@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronLeft, Lock, Loader2 } from "lucide-react";
+import { CaretLeft, Lock, CircleNotch } from "@phosphor-icons/react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -384,9 +384,9 @@ const Checkout = () => {
             key: import.meta.env.VITE_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
-            name: "Blacklovers",
+            name: "Kayals Lifestyle",
             description: `Order #${response.number || response.id}`,
-            image: "/logo.webp",
+            image: "/logo-kayals.jpg",
             order_id: razorpayOrder.id,
             handler: async function (response_razorpay: any) {
               // Payment Success Handler — verify signature server-side
@@ -793,11 +793,11 @@ const Checkout = () => {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <Link to="/cart" className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
-              <ChevronLeft className="h-4 w-4" />
+              <CaretLeft className="h-4 w-4" />
               Back to Cart
             </Link>
             <Link to="/">
-              <img src="/logo.webp" alt="Blacklovers" className="h-12" />
+              <img src="/logo-kayals.jpg" alt="Kayals Lifestyle" className="h-12" />
             </Link>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Lock className="h-4 w-4" />
@@ -1048,7 +1048,7 @@ const Checkout = () => {
                   <div className="space-y-3">
                     {isLoadingGateways ? (
                       <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <CircleNotch className="h-6 w-6 animate-spin text-muted-foreground" />
                         <span className="ml-2 text-muted-foreground">Loading payment methods...</span>
                       </div>
                     ) : !paymentGateways || paymentGateways.filter(g => g.enabled).length === 0 ? (

@@ -10,7 +10,7 @@ const decodeHtmlEntities = (text: string) => {
 };
 
 // Map route slugs to WordPress page/post slugs (tried in order)
-// Blacklovers: about-us, privacy-policy, refund-returns, shipping-policy, terms-condtions
+// Kayals Lifestyle: about-us, privacy-policy, refund-returns, shipping-policy, terms-condtions
 const slugMap: Record<string, string[]> = {
   "about": ["about-us", "about", "about-us-2"],
   "about-us": ["about-us", "about"],

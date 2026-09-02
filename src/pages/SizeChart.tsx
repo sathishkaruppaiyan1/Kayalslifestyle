@@ -12,7 +12,7 @@ const SizeChart = () => {
           <div className="bg-white rounded-lg shadow-sm p-4 lg:p-8">
             <img
               src="/size-chart.jpg"
-              alt="Black Lovers Size Chart - Measurements in inches for sizes XS to 4XL"
+              alt="Kayals Lifestyle Size Chart - Measurements in inches for sizes XS to 4XL"
               className="w-full h-auto rounded-lg"
               loading="lazy"
               decoding="async"

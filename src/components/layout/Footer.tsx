@@ -59,7 +59,7 @@ const Footer = () => {
           <div>
             <h3 className="font-heading text-xl font-bold mb-6">Contact Us</h3>
             <div className="space-y-3 text-base text-gray-300">
-              <p>BLACK LOVERS 3076 – B WING, AVADH RUTURAJ</p>
+              <p>KAYALS LIFESTYLE 3076 – B WING, AVADH RUTURAJ</p>
               <p>TEXTILE HUB, BRTS ROAD, Surat Gujarat 395012</p>
               <p className="pt-2 font-semibold">Whatsapp: 8939048873</p>
             </div>
@@ -70,7 +70,7 @@ const Footer = () => {
             <h3 className="font-heading text-xl font-bold mb-6">Follow Us</h3>
             <div className="flex gap-4">
               <a
-                href="https://www.instagram.com/blacklovers__2/?hl=en"
+                href="https://www.instagram.com/kayalslifestyle"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:opacity-80 transition-opacity"
@@ -110,7 +110,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-gray-800 mt-12 pt-8 text-center text-base text-gray-500">
-          <p>© 2025 Black Lovers. All Rights Reserved. Design by Sathishkaruppaiyan</p>
+          <p>© 2025 Kayals Lifestyle. All Rights Reserved. Design by Sathishkaruppaiyan</p>
         </div>
       </div>
     </footer>

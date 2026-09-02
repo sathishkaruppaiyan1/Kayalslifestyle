@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { useHomeBanners } from "@/hooks/useWooCommerce";
 import type { HomeBanner } from "@/hooks/useWooCommerce";
 
@@ -42,6 +42,7 @@ const HeroBanner = () => {
     return (
       <div className="w-full">
         <Link to="/collections/all">
+          {/* React 18 forwards only the lowercase `fetchpriority` DOM attribute. */}
           <img
             src="/new_arrival_banner.jpg"
             alt="Shop Now"
@@ -83,14 +84,14 @@ const HeroBanner = () => {
         className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-1.5 md:p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
         aria-label="Previous banner"
       >
-        <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+        <CaretLeft className="w-4 h-4 md:w-5 md:h-5" />
       </button>
       <button
         onClick={goNext}
         className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-black/30 hover:bg-black/50 text-white p-1.5 md:p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
         aria-label="Next banner"
       >
-        <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+        <CaretRight className="w-4 h-4 md:w-5 md:h-5" />
       </button>
 
       {/* Dots indicator */}
@@ -118,12 +119,13 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
       {banner.mobile_image_url && (
         <source media="(max-width: 768px)" srcSet={banner.mobile_image_url} />
       )}
+      {/* React 18 forwards only the lowercase `fetchpriority` DOM attribute. */}
       <img
         src={banner.image_url}
         alt={banner.alt_text || "Banner"}
         className="w-full h-auto object-cover"
         loading="eager"
-        fetchPriority="high"
+        {...({ fetchpriority: "high" } as Record<string, string>)}
         decoding="sync"
       />
     </picture>

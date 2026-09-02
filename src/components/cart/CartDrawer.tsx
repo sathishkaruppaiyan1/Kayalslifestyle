@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { X, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { X, Minus, Plus, ShoppingBag, Trash } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/contexts/CartContext";
 
@@ -86,7 +86,7 @@ const CartDrawer = () => {
                         onClick={() => removeFromCart(item.product.id, item.size, item.color)}
                         className="text-xs font-medium border border-border px-2 py-1 hover:bg-muted hover:text-destructive transition-colors flex items-center gap-1"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <Trash className="h-3 w-3" />
                         Remove
                       </button>
                     </div>

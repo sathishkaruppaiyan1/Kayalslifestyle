@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronLeft, Truck, Package, ShieldCheck, ChevronDown, ChevronUp, Loader2, Heart, Ruler, Upload, Star, X } from "lucide-react";
+import { CaretRight, CaretLeft, Truck, Package, ShieldCheck, CaretDown, CaretUp, CircleNotch, Heart, Ruler, UploadSimple, Star, X } from "@phosphor-icons/react";
 import Layout from "@/components/layout/Layout";
 import ProductCard from "@/components/product/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -493,14 +493,14 @@ const ProductDetail = () => {
           <Link to="/" className="hover:text-foreground transition-colors">
             Home
           </Link>
-          <ChevronRight className="h-4 w-4" />
+          <CaretRight className="h-4 w-4" />
           <Link
             to={`/collections/${product.categorySlug}`}
             className="hover:text-foreground transition-colors capitalize"
           >
             {product.category}
           </Link>
-          <ChevronRight className="h-4 w-4" />
+          <CaretRight className="h-4 w-4" />
           <span className="text-foreground truncate max-w-[200px]">{product.name}</span>
         </nav>
       </div>
@@ -540,7 +540,7 @@ const ProductDetail = () => {
                 onClick={() => toggleWishlist(product)}
                 className="absolute top-4 right-4 z-10 p-2 bg-white/80 rounded-full hover:bg-white transition-colors shadow-sm"
               >
-                <Heart className={`h-6 w-6 ${inWishlist ? "fill-[#800000] text-[#800000]" : "text-gray-600"}`} />
+                <Heart className={`h-6 w-6 ${inWishlist ? "fill-[#800000] text-[#800000]" : "text-gray-600"}`}  weight="fill" />
               </button>
 
               {selectedColor && (
@@ -562,14 +562,14 @@ const ProductDetail = () => {
                     className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                     aria-label="Previous image"
                   >
-                    <ChevronLeft className="h-6 w-6" />
+                    <CaretLeft className="h-6 w-6" />
                   </button>
                   <button
                     onClick={() => changeImage((activeImage + 1) % optimizedDisplayImages.length, optimizedDisplayImages.length)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
                     aria-label="Next image"
                   >
-                    <ChevronRight className="h-6 w-6" />
+                    <CaretRight className="h-6 w-6" />
                   </button>
                 </>
               )}
@@ -713,7 +713,7 @@ const ProductDetail = () => {
                       </DialogHeader>
                       <img
                         src="/size-chart.jpg"
-                        alt="Black Lovers Size Chart"
+                        alt="Kayals Lifestyle Size Chart"
                         className="w-full h-auto rounded-lg"
                       />
                     </DialogContent>
@@ -816,9 +816,9 @@ const ProductDetail = () => {
                 >
                   <span className="font-medium">Product Details</span>
                   {expandedSection === "description" ? (
-                    <ChevronUp className="h-4 w-4" />
+                    <CaretUp className="h-4 w-4" />
                   ) : (
-                    <ChevronDown className="h-4 w-4" />
+                    <CaretDown className="h-4 w-4" />
                   )}
                 </button>
                 {expandedSection === "description" && (
@@ -844,9 +844,9 @@ const ProductDetail = () => {
                   >
                     <span className="font-medium">Shipping & Returns</span>
                     {expandedSection === "shipping" ? (
-                      <ChevronUp className="h-4 w-4" />
+                      <CaretUp className="h-4 w-4" />
                     ) : (
-                      <ChevronDown className="h-4 w-4" />
+                      <CaretDown className="h-4 w-4" />
                     )}
                   </button>
                   {expandedSection === "shipping" && (
@@ -875,9 +875,9 @@ const ProductDetail = () => {
                 >
                   <span className="font-medium">Size & Fit</span>
                   {expandedSection === "size" ? (
-                    <ChevronUp className="h-4 w-4" />
+                    <CaretUp className="h-4 w-4" />
                   ) : (
-                    <ChevronDown className="h-4 w-4" />
+                    <CaretDown className="h-4 w-4" />
                   )}
                 </button>
                 {expandedSection === "size" && (
@@ -900,9 +900,9 @@ const ProductDetail = () => {
                   >
                     <span className="font-medium">Wash Care</span>
                     {expandedSection === "washcare" ? (
-                      <ChevronUp className="h-4 w-4" />
+                      <CaretUp className="h-4 w-4" />
                     ) : (
-                      <ChevronDown className="h-4 w-4" />
+                      <CaretDown className="h-4 w-4" />
                     )}
                   </button>
                   {expandedSection === "washcare" && (
@@ -957,7 +957,7 @@ const ProductDetail = () => {
                         <Star
                           key={star}
                           className={`w-6 h-6 ${star <= roundedAverage ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"}`}
-                        />
+                         weight="fill" />
                       ))}
                     </div>
                     <p className="text-sm text-muted-foreground">{reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}</p>
@@ -969,7 +969,7 @@ const ProductDetail = () => {
                       <div key={rating} className="flex items-center gap-3">
                         <div className="flex items-center gap-1 min-w-[80px]">
                           <span className="text-sm font-medium w-4">{rating}</span>
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400"  weight="fill" />
                         </div>
                         <div className="flex-1 bg-background rounded-full h-2 overflow-hidden">
                           <div
@@ -1005,7 +1005,7 @@ const ProductDetail = () => {
                           ? "fill-yellow-400 text-yellow-400"
                           : "text-muted-foreground"
                           }`}
-                      />
+                       weight="fill" />
                     </button>
                   ))}
                 </div>
@@ -1034,7 +1034,7 @@ const ProductDetail = () => {
                 />
               </div>
 
-              {/* Image/Video Upload */}
+              {/* Image/Video UploadSimple */}
               <div className="mb-5">
                 <p className="text-sm font-medium mb-2">Add Photos/Videos</p>
                 <div className="flex gap-3 flex-wrap">
@@ -1051,7 +1051,7 @@ const ProductDetail = () => {
                           onClick={() => setReviewFiles(files => files.filter((_, i) => i !== idx))}
                           className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-0.5"
                         >
-                          <ChevronDown className="w-4 h-4 rotate-45" />
+                          <CaretDown className="w-4 h-4 rotate-45" />
                         </button>
                         {isVideo && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20">
@@ -1063,8 +1063,8 @@ const ProductDetail = () => {
                   })}
                   {reviewFiles.length < 5 && (
                     <label className="w-24 h-24 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-foreground hover:bg-muted/50 transition-all">
-                      <Upload className="w-6 h-6 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground mt-1">Upload</span>
+                      <UploadSimple className="w-6 h-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground mt-1">UploadSimple</span>
                       <input
                         type="file"
                         accept="image/*,video/*"
@@ -1075,7 +1075,7 @@ const ProductDetail = () => {
                     </label>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Upload up to 5 images or videos (max 10MB each)</p>
+                <p className="text-xs text-muted-foreground mt-2">UploadSimple up to 5 images or videos (max 10MB each)</p>
               </div>
 
               {/* Name & Email */}
@@ -1107,7 +1107,7 @@ const ProductDetail = () => {
                 disabled={isSubmittingReview}
                 className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 text-base font-semibold"
               >
-                {isSubmittingReview ? <Loader2 className="animate-spin mr-2" /> : null}
+                {isSubmittingReview ? <CircleNotch className="animate-spin mr-2" /> : null}
                 Submit Review
               </Button>
             </div>
@@ -1120,7 +1120,7 @@ const ProductDetail = () => {
 
               {isLoadingReviews ? (
                 <div className="text-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+                  <CircleNotch className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
                 </div>
               ) : reviews && reviews.length > 0 ? (
                 <div className="space-y-6">
@@ -1129,7 +1129,7 @@ const ProductDetail = () => {
                       <div className="flex items-center gap-2 mb-2">
                         <div className="flex">
                           {[1, 2, 3, 4, 5].map(star => (
-                            <Star key={star} className={`w-4 h-4 ${star <= review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                            <Star key={star} className={`w-4 h-4 ${star <= review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}  weight="fill" />
                           ))}
                         </div>
                         <span className="font-semibold">{review.reviewer}</span>

@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserOrders } from "@/hooks/useWooCommerce";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Package, Phone, MessageSquare, Clock, Truck, CheckCircle, AlertCircle } from "lucide-react";
+import { CircleNotch, Package, Phone, ChatText, Clock, Truck, CheckCircle, WarningCircle } from "@phosphor-icons/react";
 
 type LoginStep = "phone" | "otp";
 
@@ -69,7 +69,7 @@ const Orders = () => {
     const s = status.toLowerCase();
     if (s === "completed") return <CheckCircle className="h-4 w-4" />;
     if (s === "processing" || s === "on-hold") return <Truck className="h-4 w-4" />;
-    if (s === "cancelled" || s === "failed") return <AlertCircle className="h-4 w-4" />;
+    if (s === "cancelled" || s === "failed") return <WarningCircle className="h-4 w-4" />;
     return <Clock className="h-4 w-4" />;
   };
 
@@ -181,7 +181,7 @@ const Orders = () => {
             <div>
               {ordersLoading ? (
                 <div className="flex items-center justify-center py-16">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <CircleNotch className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
               ) : orders.length === 0 ? (
                 <Card>
@@ -309,12 +309,12 @@ const Orders = () => {
                     >
                       {isLoading ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
                           Sending OTP...
                         </>
                       ) : (
                         <>
-                          <MessageSquare className="mr-2 h-4 w-4" />
+                          <ChatText className="mr-2 h-4 w-4" />
                           Send OTP via WhatsApp
                         </>
                       )}
@@ -327,7 +327,7 @@ const Orders = () => {
                 <Card>
                   <CardHeader className="text-center">
                     <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
-                      <MessageSquare className="w-8 h-8 text-green-600" />
+                      <ChatText className="w-8 h-8 text-green-600" />
                     </div>
                     <CardTitle>Enter OTP</CardTitle>
                     <CardDescription>
@@ -358,7 +358,7 @@ const Orders = () => {
                     >
                       {isLoading ? (
                         <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
                           Verifying...
                         </>
                       ) : (

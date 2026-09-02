@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle } from "@phosphor-icons/react";
 import Layout from "@/components/layout/Layout";
 import { Button } from "@/components/ui/button";
 

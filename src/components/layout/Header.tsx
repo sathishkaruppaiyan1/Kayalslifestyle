@@ -8,50 +8,16 @@ import { useSearch } from "@/contexts/SearchContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X } from "lucide-react";
+import { X } from "@phosphor-icons/react";
+import WoodmartIcon from "@/components/ui/WoodmartIcon";
 
-// Adorn Icons - Light line style SVGs
-// Adorn Icons - Bolder style SVGs
-const AdornMenu = () => (
-  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
-    <path d="M3 6H21M3 12H21M3 18H21" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const AdornClose = () => (
-  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
-    <path d="M6 6L18 18M6 18L18 6" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const AdornHeart = () => (
-  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
-    <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const AdornCart = () => (
-  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
-    <path d="M6 6H21L19 16H8L6 6Z" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M6 6L5 3H2" strokeLinecap="round" strokeLinejoin="round" />
-    <circle cx="10" cy="20" r="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    <circle cx="17" cy="20" r="1.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const AdornUser = () => (
-  <svg width="26px" height="26px" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: '26px', height: '26px' }}>
-    <circle cx="12" cy="7" r="4" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M5.5 21C5.5 17.134 8.41015 14 12 14C15.5899 14 18.5 17.134 18.5 21" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const AdornSearch = () => (
-  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <circle cx="10" cy="10" r="7" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M15 15L21 21" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
+// Header icons — real glyphs from the reference site's icon font (kayalslifestyle.com).
+const AdornMenu = () => <WoodmartIcon name="menu" size={26} />;
+const AdornClose = () => <WoodmartIcon name="close" size={26} />;
+const AdornHeart = () => <WoodmartIcon name="heart" size={26} />;
+const AdornCart = () => <WoodmartIcon name="cart" size={26} />;
+const AdornUser = () => <WoodmartIcon name="user" size={26} />;
+const AdornSearch = () => <WoodmartIcon name="search" size={16} />;
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -94,9 +60,9 @@ const Header = () => {
             {/* Center - Logo */}
             <Link to="/" className="absolute left-1/2 -translate-x-1/2">
               <img
-                src="/logo_new.png"
-                alt="Blacklovers"
-                className="h-24 w-auto"
+                src="/logo-kayals.jpg"
+                alt="Kayals Lifestyle"
+                className="h-14 w-auto"
               />
             </Link>
 
@@ -124,9 +90,9 @@ const Header = () => {
             {/* Logo - Left aligned */}
             <Link to="/" className="flex-shrink-0">
               <img
-                src="/logo_new.png"
-                alt="Blacklovers"
-                className="h-14 w-auto"
+                src="/logo-kayals.jpg"
+                alt="Kayals Lifestyle"
+                className="h-10 w-auto"
               />
             </Link>
 
@@ -294,9 +260,7 @@ const Header = () => {
                           className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors flex items-center gap-2"
                           onClick={() => setIsMenuOpen(false)}
                         >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M12 21.35L10.55 20.03C5.4 15.36 2 12.28 2 8.5C2 5.42 4.42 3 7.5 3C9.24 3 10.91 3.81 12 5.09C13.09 3.81 14.76 3 16.5 3C19.58 3 22 5.42 22 8.5C22 12.28 18.6 15.36 13.45 20.04L12 21.35Z" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          <WoodmartIcon name="heart" size={18} />
                           Wishlist
                         </Link>
                         <Link
@@ -304,10 +268,7 @@ const Header = () => {
                           className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors flex items-center gap-2"
                           onClick={() => setIsMenuOpen(false)}
                         >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M16 4H18C18.5304 4 19.0391 4.21071 19.4142 4.58579C19.7893 4.96086 20 5.46957 20 6V20C20 20.5304 19.7893 21.0391 19.4142 21.4142C19.0391 21.7893 18.5304 22 18 22H6C5.46957 22 4.96086 21.7893 4.58579 21.4142C4.21071 21.0391 4 20.5304 4 20V6C4 5.46957 4.21071 4.96086 4.58579 4.58579C4.96086 4.21071 5.46957 4 6 4H8" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M15 2H9C8.44772 2 8 2.44772 8 3V5C8 5.55228 8.44772 6 9 6H15C15.5523 6 16 5.55228 16 5V3C16 2.44772 15.5523 2 15 2Z" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          <WoodmartIcon name="list" size={18} />
                           My Orders
                         </Link>
                         <Link
@@ -315,11 +276,7 @@ const Header = () => {
                           className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors flex items-center gap-2"
                           onClick={() => setIsMenuOpen(false)}
                         >
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M21.3 8.7L8.7 21.3C8.3 21.7 7.7 21.7 7.3 21.3L2.7 16.7C2.3 16.3 2.3 15.7 2.7 15.3L15.3 2.7C15.7 2.3 16.3 2.3 16.7 2.7L21.3 7.3C21.7 7.7 21.7 8.3 21.3 8.7Z" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M6 18L12 12" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M10 14L14 10" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          <WoodmartIcon name="ruler" size={18} />
                           Size Chart
                         </Link>
                       </nav>

@@ -261,3 +261,27 @@
     @apply break-words;
   }
 }
+
+/* WoodMart icon font — exact glyphs from the reference site (kayalslifestyle.com).
+   Used via <WoodmartIcon name="..." />. Phosphor remains the primary icon set. */
+@font-face {
+  font-family: 'woodmart-font';
+  src: url('/fonts/woodmart-font.woff2') format('woff2'),
+       url('/fonts/woodmart-font.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+.wd-icon {
+  font-family: 'woodmart-font' !important;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  display: inline-block;
+  vertical-align: middle;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

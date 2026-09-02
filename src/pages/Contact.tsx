@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, MapPin, Phone, Mail, MessageCircle, Clock, Send, CheckCircle } from "lucide-react";
+import { CircleNotch, MapPin, Phone, Envelope, ChatCircle, Clock, PaperPlaneTilt, CheckCircle } from "@phosphor-icons/react";
 
 const WORDPRESS_URL = import.meta.env.VITE_WORDPRESS_URL || "";
 // Contact Form 7 form ID — update this to match your CF7 form ID in WordPress
@@ -81,7 +81,7 @@ const Contact = () => {
       icon: <MapPin className="h-5 w-5" />,
       title: "Visit Us",
       lines: [
-        "BLACK LOVERS",
+        "KAYALS LIFESTYLE",
         "3076 - B WING, AVADH RUTURAJ",
         "TEXTILE HUB, BRTS ROAD",
         "Surat, Gujarat 395012",
@@ -95,11 +95,11 @@ const Contact = () => {
       linkLabel: "Chat on WhatsApp",
     },
     {
-      icon: <Mail className="h-5 w-5" />,
+      icon: <Envelope className="h-5 w-5" />,
       title: "Email",
       lines: ["support@blacklovers.in"],
       link: "mailto:support@blacklovers.in",
-      linkLabel: "Send Email",
+      linkLabel: "PaperPlaneTilt Email",
     },
     {
       icon: <Clock className="h-5 w-5" />,
@@ -148,7 +148,7 @@ const Contact = () => {
                           className="inline-flex items-center gap-1 text-sm text-[#800000] font-medium mt-2 hover:underline"
                         >
                           {info.linkLabel}
-                          <MessageCircle className="h-3.5 w-3.5" />
+                          <ChatCircle className="h-3.5 w-3.5" />
                         </a>
                       )}
                     </div>
@@ -189,12 +189,12 @@ const Contact = () => {
                         variant="outline"
                         onClick={() => setIsSubmitted(false)}
                       >
-                        Send Another Message
+                        PaperPlaneTilt Another Message
                       </Button>
                     </div>
                   ) : (
                     <>
-                      <h2 className="text-xl font-semibold mb-1">Send us a Message</h2>
+                      <h2 className="text-xl font-semibold mb-1">PaperPlaneTilt us a Message</h2>
                       <p className="text-sm text-gray-500 mb-6">
                         Fill out the form and we'll get back to you as soon as possible.
                       </p>
@@ -281,13 +281,13 @@ const Contact = () => {
                         >
                           {isSubmitting ? (
                             <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              <CircleNotch className="mr-2 h-4 w-4 animate-spin" />
                               Sending...
                             </>
                           ) : (
                             <>
-                              <Send className="mr-2 h-4 w-4" />
-                              Send Message
+                              <PaperPlaneTilt className="mr-2 h-4 w-4" />
+                              PaperPlaneTilt Message
                             </>
                           )}
                         </Button>

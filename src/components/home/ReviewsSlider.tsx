@@ -1,4 +1,4 @@
-import { Star, User } from "lucide-react";
+import { Star, User } from "@phosphor-icons/react";
 import {
     Carousel,
     CarouselContent,
@@ -63,7 +63,7 @@ const ReviewsSlider = () => {
                                             <Star
                                                 key={i}
                                                 className={`h-4 w-4 ${i < review.rating ? "fill-current" : "text-muted"}`}
-                                            />
+                                             weight="fill" />
                                         ))}
                                     </div>
                                     <p className="text-sm text-foreground mb-4 flex-1">"{review.text}"</p>
