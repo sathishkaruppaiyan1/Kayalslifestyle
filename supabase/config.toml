@@ -32,3 +32,21 @@ verify_jwt = false
 
 [functions.verify-easebuzz-payment]
 verify_jwt = false
+
+[functions.whatsapp-send-otp]
+verify_jwt = false
+
+[functions.whatsapp-verify-otp]
+verify_jwt = false
+
+[functions.whatsapp-order-notification]
+verify_jwt = false
+
+[functions.whatsapp-tracking-update]
+verify_jwt = false
+
+[functions.whatsapp-account-creation]
+verify_jwt = false
+
+[functions.whatsapp-send-review]
+verify_jwt = false

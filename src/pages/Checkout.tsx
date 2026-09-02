@@ -421,12 +421,12 @@ const Checkout = () => {
                     description: "Your order has been placed and payment confirmed.",
                   });
 
-                  // Send WhatsApp notification via Interakt
+                  // Send WhatsApp notification via Meta Cloud API
                   try {
                     const firstProductImage = items[0]?.product.images?.[0];
                     const whatsappNum = formData.whatsapp || formData.phone;
                     console.log("Triggering Razorpay WhatsApp notification for:", whatsappNum);
-                    const { error: interaktError } = await supabase.functions.invoke("interakt-order-notification", {
+                    const { error: waError } = await supabase.functions.invoke("whatsapp-order-notification", {
                       body: {
                         phoneNumber: whatsappNum,
                         customerName: formData.name,
@@ -437,13 +437,13 @@ const Checkout = () => {
                         buttonValue: "https://blacklovers.in/",
                       },
                     });
-                    if (interaktError) {
-                      console.error("Failed to send WhatsApp notification:", interaktError);
+                    if (waError) {
+                      console.error("Failed to send WhatsApp notification:", waError);
                     } else {
                       console.log("WhatsApp notification sent successfully");
                     }
                   } catch (whatsappError) {
-                    console.error("Error calling Interakt edge function:", whatsappError);
+                    console.error("Error calling WhatsApp edge function:", whatsappError);
                   }
                 }
               } catch (updateError: any) {

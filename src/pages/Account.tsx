@@ -424,7 +424,7 @@ const Account = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("interakt-send-otp", {
+      const { data, error } = await supabase.functions.invoke("whatsapp-send-otp", {
         body: { phoneNumber, countryCode: "+91" },
       });
 
@@ -475,7 +475,7 @@ const Account = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("interakt-verify-otp", {
+      const { data, error } = await supabase.functions.invoke("whatsapp-verify-otp", {
         body: {
           phoneNumber,
           otp,
