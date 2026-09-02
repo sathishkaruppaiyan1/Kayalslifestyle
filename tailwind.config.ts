@@ -13,8 +13,9 @@ export default {
       },
     },
     fontFamily: {
-      sans: ['Poppins', 'sans-serif'],
-      heading: ['Roboto Slab', 'serif'],
+      sans: ['Jost', 'sans-serif'],
+      heading: ['Jost', 'sans-serif'],
+      body: ['Jost', 'sans-serif'],
     },
     extend: {
       colors: {
