@@ -13,9 +13,9 @@ export default {
       },
     },
     fontFamily: {
-      sans: ['Jost', 'sans-serif'],
-      heading: ['Jost', 'sans-serif'],
-      body: ['Jost', 'sans-serif'],
+      sans: ['Jost', 'system-ui', 'sans-serif'],
+      heading: ['Hanken Grotesk', 'Jost', 'system-ui', 'sans-serif'],
+      body: ['Jost', 'system-ui', 'sans-serif'],
     },
     extend: {
       colors: {
@@ -53,15 +53,29 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         price: "hsl(var(--price))",
+        "price-old": "hsl(var(--price-old))",
         promo: {
           DEFAULT: "hsl(var(--promo-bar))",
           foreground: "hsl(var(--promo-bar-foreground))",
         },
+        /* Brand gold. `brand` is the fill (#DD9933); `brand-ink` is the
+           darkened variant that stays readable as text on white. */
+        brand: {
+          DEFAULT: "hsl(var(--primary))",
+          ink: "hsl(var(--brand-ink))",
+          tint: "hsl(var(--brand-tint))",
+          "tint-strong": "hsl(var(--brand-tint-strong))",
+        },
+        success: "hsl(var(--success))",
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "calc(var(--radius) + 3px)",
+        md: "var(--radius)",
+        sm: "calc(var(--radius) - 2px)",
+      },
+      boxShadow: {
+        card: "0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06)",
+        "card-hover": "0 2px 4px rgba(0,0,0,0.05), 0 12px 28px rgba(0,0,0,0.10)",
       },
       keyframes: {
         "accordion-down": {
@@ -75,6 +89,11 @@ export default {
         "fade-in": {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
+        },
+        /* Images settle from slightly enlarged to true size. */
+        "zoom-out": {
+          from: { opacity: "0", transform: "scale(1.06)" },
+          to: { opacity: "1", transform: "scale(1)" },
         },
         "slide-in": {
           from: { opacity: "0", transform: "translateX(-10px)" },
@@ -97,6 +116,7 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.4s ease-out forwards",
+        "zoom-out": "zoom-out 0.7s cubic-bezier(0.22, 1, 0.36, 1)",
         "slide-in": "slide-in 0.3s ease-out forwards",
         "slide-in-left": "slide-in-left 0.3s ease-out forwards",
         "slide-in-right": "slide-in-right 0.3s ease-out forwards",

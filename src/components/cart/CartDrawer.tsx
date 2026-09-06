@@ -109,12 +109,12 @@ const CartDrawer = () => {
             </p>
             <div className="grid gap-2">
               <Link to="/cart" onClick={() => setIsOpen(false)}>
-                <Button variant="outline" className="w-full h-12 rounded-none font-bold">
+                <Button variant="outline" className="w-full h-12">
                   VIEW CART
                 </Button>
               </Link>
               <Link to="/checkout" onClick={() => setIsOpen(false)}>
-                <Button className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold">
+                <Button variant="addToCart" className="w-full h-12">
                   CHECKOUT
                 </Button>
               </Link>

@@ -11,39 +11,9 @@ import { useWishlist } from "@/contexts/WishlistContext";
 import { toast } from "sonner";
 import type { Product } from "@/types/product";
 import { getProductDetailImage, getGalleryThumbnail } from "@/lib/imageOptimizer";
-
-// Common color name to hex mapping
-const colorNameToHex: Record<string, string> = {
-  black: "#000000",
-  white: "#FFFFFF",
-  red: "#FF0000",
-  blue: "#0000FF",
-  green: "#008000",
-  yellow: "#FFFF00",
-  purple: "#800080",
-  pink: "#FFC0CB",
-  orange: "#FFA500",
-  brown: "#A52A2A",
-  gray: "#808080",
-  grey: "#808080",
-  navy: "#000080",
-  maroon: "#800000",
-  beige: "#F5F5DC",
-  cream: "#FFFDD0",
-  gold: "#FFD700",
-  silver: "#C0C0C0",
-  wine: "#722F37",
-  teal: "#008080",
-  coral: "#FF7F50",
-  peach: "#FFCBA4",
-  lavender: "#E6E6FA",
-  mint: "#98FF98",
-  olive: "#808000",
-  burgundy: "#800020",
-  mustard: "#FFDB58",
-  rust: "#B7410E",
-  grape: "#6F2DA8",
-};
+import ColorSwatches, { isColorOutOfStock as colorOutOfStock } from "@/components/product/ColorSwatches";
+import { sortSizes } from "@/lib/sizes";
+import WoodmartIcon from "@/components/ui/WoodmartIcon";
 
 interface VariationImage {
   color: string;
@@ -129,14 +99,7 @@ const ProductDetail = () => {
     return product.stockQuantity ?? null;
   };
 
-  const isColorOutOfStock = (colorName: string): boolean => {
-    if (!product || !product.variations || product.variations.length === 0) return false;
-    const colorVariations = product.variations.filter(
-      (v) => v.color.toLowerCase() === colorName.toLowerCase()
-    );
-    if (colorVariations.length === 0) return false;
-    return colorVariations.every((v) => v.stockStatus === 'outofstock' || (v.manageStock && (v.stockQuantity === 0 || v.stockQuantity === null)));
-  };
+  const isColorOutOfStock = (colorName: string): boolean => colorOutOfStock(product, colorName);
 
   const isSizeOutOfStock = (size: string): boolean => {
     if (!product || !product.variations || product.variations.length === 0) return false;
@@ -428,9 +391,6 @@ const ProductDetail = () => {
       : getGalleryThumbnail(img)
   );
 
-  const getColorHex = (colorName: string): string => {
-    return colorNameToHex[colorName.toLowerCase()] || "#CCCCCC";
-  };
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -540,11 +500,11 @@ const ProductDetail = () => {
                 onClick={() => toggleWishlist(product)}
                 className="absolute top-4 right-4 z-10 p-2 bg-white/80 rounded-full hover:bg-white transition-colors shadow-sm"
               >
-                <Heart className={`h-6 w-6 ${inWishlist ? "fill-[#800000] text-[#800000]" : "text-gray-600"}`}  weight="fill" />
+                <Heart className={`h-6 w-6 ${inWishlist ? "fill-brand-ink text-brand-ink" : "text-gray-600"}`}  weight="fill" />
               </button>
 
               {selectedColor && (
-                <span className="absolute top-4 left-4 bg-[#8B4B6B] text-white text-xs px-2 py-1 font-medium capitalize">
+                <span className="absolute top-4 left-4 bg-primary text-primary-foreground text-[11px] font-semibold rounded-full px-2 py-0.5 capitalize">
                   {selectedColor} Color
                 </span>
               )}
@@ -604,13 +564,13 @@ const ProductDetail = () => {
                 {product.name}
               </h1>
               <div className="flex items-center gap-3 mt-2">
-                <span className="text-xl font-bold text-[#800000]">{formatPrice(product.price)}</span>
+                <span className="text-xl font-bold text-brand-ink">{formatPrice(product.price)}</span>
                 {product.originalPrice && product.originalPrice > product.price && (
                   <>
                     <span className="text-muted-foreground/60 line-through text-lg">
                       {formatPrice(product.originalPrice)}
                     </span>
-                    <span className="text-sm font-bold text-[#FF0000] border border-[#FF0000] px-2 py-0.5 rounded-sm">
+                    <span className="text-sm font-bold text-destructive border border-destructive px-2 py-0.5 rounded-sm">
                       {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
                     </span>
                   </>
@@ -619,79 +579,39 @@ const ProductDetail = () => {
 
             </div>
 
-            {/* Color Selection */}
-            {product.colors && product.colors.length > 0 && (
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <p className={`text-sm font-medium ${showValidation && !selectedColor ? "text-red-600" : ""}`}>
-                    Color{selectedColor && <span className="capitalize font-bold text-[#800000]">: {selectedColor}</span>}
-                    {showValidation && !selectedColor && <span className="ml-2 text-red-600 animate-pulse">(Required)</span>}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {product.colors.map((color, index) => {
-                    const colorName = typeof color === "string" ? color : color.name;
-                    const colorHex = typeof color === "string" ? getColorHex(color) : color.hex;
-                    const isSelected = selectedColor?.toLowerCase() === colorName.toLowerCase();
-
-                    // Get variation image for this color (check enhanced first, then fallback)
-                    const sourceVariations = (enhancedVariationImages && enhancedVariationImages.length > 0)
-                      ? enhancedVariationImages
-                      : product.variationImages;
-                    const variationForColor = sourceVariations?.find(
-                      (v) => (v.color || '').trim().toLowerCase() === colorName.trim().toLowerCase()
-                    );
-                    const variationImage = variationForColor?.images?.[0];
-                    const outOfStock = isColorOutOfStock(colorName);
-
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          if (outOfStock) return;
-                          const newColor = isSelected ? null : colorName;
-                          setSelectedColor(newColor);
-                          // Deselect size if it's out of stock for this color
-                          if (newColor && selectedSize && product.variations) {
-                            const variation = product.variations.find(
-                              (v) => v.color.toLowerCase() === newColor.toLowerCase() && v.size === selectedSize
-                            );
-                            if (variation && (variation.stockStatus === 'outofstock' || (variation.manageStock && (variation.stockQuantity === 0 || variation.stockQuantity === null)))) {
-                              setSelectedSize(null);
-                            }
-                          }
-                          setActiveImage(0);
-                          if (showValidation) setShowValidation(false);
-                        }}
-                        className={`w-20 h-28 rounded-md border-2 transition-all relative overflow-hidden ${isSelected
-                          ? "border-[3px] border-black ring-0" // Bolder black active border
-                          : "border-border hover:border-foreground"
-                          } ${outOfStock ? "opacity-60" : ""}`}
-                        title={colorName + (outOfStock ? " (Out of Stock)" : "")}
-                      >
-                        {variationImage ? (
-                          <img
-                            src={variationImage}
-                            alt={colorName}
-                            className="w-full h-full object-cover object-top border-2 border-white"
-                          />
-                        ) : (
-                          <div
-                            className="w-full h-full"
-                            style={{ backgroundColor: colorHex }}
-                          />
-                        )}
-                        {outOfStock && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <X className="w-12 h-12 text-black/40 stroke-[1px]" />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* Colour Selection — large image tiles, this page's own design. */}
+            <ColorSwatches
+              variant="detail"
+              colors={product.colors || []}
+              variationImages={
+                (enhancedVariationImages && enhancedVariationImages.length > 0
+                  ? enhancedVariationImages
+                  : product.variationImages) as never
+              }
+              product={product}
+              selected={selectedColor}
+              invalid={showValidation && !selectedColor}
+              onSelect={(newColor) => {
+                setSelectedColor(newColor);
+                // Drop the chosen size if it is not stocked in the new colour.
+                if (newColor && selectedSize && product.variations) {
+                  const variation = product.variations.find(
+                    (v) =>
+                      v.color.toLowerCase() === newColor.toLowerCase() && v.size === selectedSize,
+                  );
+                  if (
+                    variation &&
+                    (variation.stockStatus === "outofstock" ||
+                      (variation.manageStock &&
+                        (variation.stockQuantity === 0 || variation.stockQuantity === null)))
+                  ) {
+                    setSelectedSize(null);
+                  }
+                }
+                setActiveImage(0);
+                if (showValidation) setShowValidation(false);
+              }}
+            />
 
             {/* Size Selection */}
             {product.sizes.length > 0 && (
@@ -720,7 +640,7 @@ const ProductDetail = () => {
                   </Dialog>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {product.sizes.map((size) => {
+                  {sortSizes(product.sizes).map((size) => {
                     const outOfStock = isSizeOutOfStock(size);
                     return (
                       <button
@@ -790,14 +710,16 @@ const ProductDetail = () => {
             <div className="space-y-4">
               <div className="flex flex-row gap-3">
                 <Button
-                  className="flex-1 h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none text-base font-bold"
+                  variant="addToCart"
+                  className="flex-1 h-12"
                   disabled={product.isSoldOut}
                   onClick={() => handleAddToCart(false)}
                 >
                   {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
                 </Button>
                 <Button
-                  className="flex-1 h-12 bg-[#8B0000] text-white hover:bg-[#6B0000] rounded-none text-base font-bold"
+                  variant="buyNow"
+                  className="flex-1 h-12"
                   disabled={product.isSoldOut}
                   onClick={() => handleAddToCart(true)}
                 >

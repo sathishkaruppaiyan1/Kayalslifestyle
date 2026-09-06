@@ -165,7 +165,7 @@ const QuickViewModal = () => {
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={handleAddToCart}
-                className="flex-1 h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"
+                variant="addToCart" className="flex-1 h-12"
                 disabled={product.isSoldOut}
               >
                 {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
@@ -173,7 +173,7 @@ const QuickViewModal = () => {
               <Button
                 variant="outline"
                 size="icon"
-                className={`h-12 w-12 rounded-none ${inWishlist ? "text-primary border-primary" : ""}`}
+                className={`h-12 w-12 ${inWishlist ? "text-brand-ink border-primary" : ""}`}
                 onClick={() => toggleWishlist(product)}
               >
                 <AdornHeart filled={inWishlist} />

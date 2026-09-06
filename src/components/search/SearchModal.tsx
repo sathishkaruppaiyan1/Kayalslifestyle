@@ -4,6 +4,7 @@ import { X, CircleNotch } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { useSearch } from "@/contexts/SearchContext";
 import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
+import { COLOR_FAMILIES } from "@/lib/colorFamilies";
 
 const AdornSearch = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -56,7 +57,7 @@ const SearchModal = () => {
                 placeholder="Search for products..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full h-14 pl-12 pr-4 text-lg border-2 border-foreground rounded-none placeholder:font-medium focus-visible:ring-0 focus-visible:border-foreground"
+                className="w-full h-14 pl-12 pr-4 text-base border border-border rounded-md focus-visible:ring-0 focus-visible:border-primary"
                 autoFocus
               />
             </div>
@@ -85,6 +86,32 @@ const SearchModal = () => {
                   ))}
                 </div>
               </div>
+              {/* Shop by colour — deep-links into the archive's colour filter,
+                  so search and the sidebar share one mechanism. */}
+              <div>
+                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Shop by Colour</h3>
+                <div className="flex flex-wrap gap-3">
+                  {COLOR_FAMILIES.map((c) => (
+                    <Link
+                      key={c.name}
+                      to={`/collections/all?color=${encodeURIComponent(c.name)}`}
+                      onClick={closeSearch}
+                      title={`Shop ${c.name}`}
+                      className="group flex flex-col items-center gap-1.5 w-14"
+                    >
+                      <span
+                        className="h-9 w-9 rounded-full border border-black/10 ring-2 ring-transparent
+                                   transition-all group-hover:ring-primary group-hover:-translate-y-0.5"
+                        style={{ backgroundColor: c.hex }}
+                      />
+                      <span className="text-[11px] text-muted-foreground group-hover:text-brand-ink transition-colors">
+                        {c.name}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">Related Searches</h3>
                 <div className="flex flex-wrap gap-2">
@@ -133,10 +160,10 @@ const SearchModal = () => {
                       />
                     </div>
                     <div className="mt-2">
-                      <h3 className="text-sm font-bold truncate group-hover:text-primary transition-colors">
+                      <h3 className="text-sm font-semibold truncate group-hover:text-brand-ink transition-colors">
                         {product.name}
                       </h3>
-                      <p className="text-sm font-bold text-primary mt-1">
+                      <p className="price text-sm mt-1">
                         {formatPrice(product.price)}
                       </p>
                     </div>
@@ -152,7 +179,7 @@ const SearchModal = () => {
               <Link
                 to={`/collections/all?search=${encodeURIComponent(query)}`}
                 onClick={closeSearch}
-                className="text-sm font-bold underline hover:text-primary transition-colors"
+                className="text-sm font-semibold underline text-brand-ink hover:text-primary transition-colors"
               >
                 View all results for "{query}"
               </Link>

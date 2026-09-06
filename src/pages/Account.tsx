@@ -579,7 +579,7 @@ const Account = () => {
               </div>
 
               <Button
-                className="w-full bg-[#800000] text-white hover:bg-[#600000]"
+                className="w-full bg-primary text-white hover:bg-brand-ink"
                 onClick={handleSendOTP}
                 disabled={isLoading || phoneNumber.length !== 10}
               >
@@ -633,7 +633,7 @@ const Account = () => {
               </div>
 
               <Button
-                className="w-full bg-[#800000] text-white hover:bg-[#600000]"
+                className="w-full bg-primary text-white hover:bg-brand-ink"
                 onClick={handleVerifyOTP}
                 disabled={isLoading || otp.length !== 6}
               >
@@ -690,7 +690,8 @@ const Account = () => {
               >
                 <path
                   strokeLinecap="round"
-                  strokeLinejoin="round"
+                  strokeLinejoin="round"
+
                   d="M5 13l4 4L19 7"
                 />
               </svg>

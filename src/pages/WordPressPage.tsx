@@ -1,5 +1,6 @@
 import { useParams, useLocation } from "react-router-dom";
 import Layout from "@/components/layout/Layout";
+import PageBand from "@/components/layout/PageBand";
 import { useWordPressPageBySlugs } from "@/hooks/useWooCommerce";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -51,19 +52,8 @@ const WordPressPage = ({ routeSlug: propSlug }: WordPressPageProps) => {
 
   return (
     <Layout>
-      {/* Page Header */}
-      <div className="bg-[#FFF9E5] py-8 text-center">
-        <h1 className="font-heading text-3xl lg:text-4xl">
-          {isLoading ? (
-            <Skeleton className="h-10 w-48 mx-auto" />
-          ) : (
-            displayTitle
-          )}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Home &gt; {displayTitle}
-        </p>
-      </div>
+      {/* Page header — same gold band as the archive pages. */}
+      <PageBand title={isLoading ? " " : displayTitle} crumbs={[{ label: displayTitle }]} />
 
       <div className="container mx-auto px-4 py-8 lg:py-12">
         {isLoading ? (

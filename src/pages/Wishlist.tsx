@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Heart, X, ShoppingBag } from "@phosphor-icons/react";
 import Layout from "@/components/layout/Layout";
+import PageBand from "@/components/layout/PageBand";
 import { Button } from "@/components/ui/button";
 import { useWishlist } from "@/contexts/WishlistContext";
 import { useCart } from "@/contexts/CartContext";
@@ -36,7 +37,7 @@ const Wishlist = () => {
               Save items you love by clicking the heart icon on products.
             </p>
             <Link to="/collections/all">
-              <Button className="bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold px-8 py-6">
+              <Button variant="addToCart" className="px-8 py-6">
                 START SHOPPING
               </Button>
             </Link>
@@ -49,12 +50,11 @@ const Wishlist = () => {
   return (
     <Layout>
       {/* Header */}
-      <div className="bg-[#FFF9E5] py-8 text-center">
-        <h1 className="font-heading text-3xl lg:text-4xl">My Wishlist</h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Home &gt; Wishlist ({items.length} items)
-        </p>
-      </div>
+      <PageBand
+        title="My Wishlist"
+        crumbs={[{ label: "Wishlist" }]}
+        subtitle={`${items.length} item${items.length === 1 ? "" : "s"}`}
+      />
 
       <div className="container mx-auto px-4 py-8">
         {/* Actions */}
@@ -64,13 +64,13 @@ const Wishlist = () => {
             <Button
               variant="outline"
               onClick={clearWishlist}
-              className="rounded-none font-bold"
+              
             >
               Clear Wishlist
             </Button>
             <Button
               onClick={handleAddAllToCart}
-              className="bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"
+              variant="addToCart"
             >
               <ShoppingBag className="h-4 w-4 mr-2" />
               Add All to Cart
@@ -129,14 +129,14 @@ const Wishlist = () => {
                       {formatPrice(product.originalPrice)}
                     </span>
                   )}
-                  <span className="font-bold text-[#800000]">{formatPrice(product.price)}</span>
+                  <span className="font-bold text-brand-ink">{formatPrice(product.price)}</span>
                 </div>
 
                 {/* Add to Cart Button */}
                 <Button
                   onClick={() => handleAddToCart(product)}
                   disabled={product.isSoldOut}
-                  className="w-full mt-4 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"
+                  variant="addToCart" className="w-full mt-4"
                 >
                   {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
                 </Button>
@@ -148,7 +148,7 @@ const Wishlist = () => {
         {/* Continue Shopping */}
         <div className="text-center mt-12">
           <Link to="/collections/all">
-            <Button variant="outline" className="rounded-none font-bold px-8">
+            <Button variant="outline" className="px-8">
               Continue Shopping
             </Button>
           </Link>

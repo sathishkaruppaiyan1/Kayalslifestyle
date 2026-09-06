@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,12 +12,12 @@ import { X } from "@phosphor-icons/react";
 import WoodmartIcon from "@/components/ui/WoodmartIcon";
 
 // Header icons — real glyphs from the reference site's icon font (kayalslifestyle.com).
-const AdornMenu = () => <WoodmartIcon name="menu" size={26} />;
-const AdornClose = () => <WoodmartIcon name="close" size={26} />;
-const AdornHeart = () => <WoodmartIcon name="heart" size={26} />;
-const AdornCart = () => <WoodmartIcon name="cart" size={26} />;
-const AdornUser = () => <WoodmartIcon name="user" size={26} />;
-const AdornSearch = () => <WoodmartIcon name="search" size={16} />;
+const AdornMenu = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="menu" size={size} />;
+const AdornClose = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="close" size={size} />;
+const AdornHeart = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="heart" size={size} />;
+const AdornCart = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="cart" size={size} />;
+const AdornUser = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="user" size={size} />;
+const AdornSearch = ({ size = 16 }: { size?: number }) => <WoodmartIcon name="search" size={size} />;
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -27,6 +27,20 @@ const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { data: categoriesData } = useWooCommerceCategories();
   const categories = categoriesData?.categories || [];
+
+  // Lock the page behind the drawer, and flag the open state on <body> so the
+  // bottom nav can get out of the way. The nav is a sibling fixed element and
+  // paints over the drawer regardless of z-index, so hiding it is the reliable
+  // fix rather than escalating z-index further.
+  useEffect(() => {
+    document.body.style.overflow = isMenuOpen ? "hidden" : "";
+    if (isMenuOpen) document.body.dataset.menuOpen = "true";
+    else delete document.body.dataset.menuOpen;
+    return () => {
+      document.body.style.overflow = "";
+      delete document.body.dataset.menuOpen;
+    };
+  }, [isMenuOpen]);
 
   const navLinks = [
     { name: "Home", href: "/" },
@@ -39,49 +53,60 @@ const Header = () => {
       <header className="bg-background z-50">
         <div className="container mx-auto px-4">
           {/* Mobile Header */}
-          <div className="flex lg:hidden items-center justify-between h-20">
-            {/* Left - Burger & Wishlist */}
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                className="h-10 w-10 p-0"
-                style={{ height: '40px', width: '40px' }}
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-              >
-                {isMenuOpen ? <AdornClose /> : <AdornMenu />}
-              </Button>
-              <Link to="/wishlist">
-                <Button variant="ghost" className="h-10 w-10 p-0" style={{ height: '40px', width: '40px' }}>
-                  <AdornHeart />
-                </Button>
-              </Link>
-            </div>
+          <div className="flex lg:hidden items-center justify-between h-16">
+            {/* Left — burger only */}
+            <Button
+              variant="ghost"
+              className="h-9 w-9 p-0"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            >
+              {isMenuOpen ? <AdornClose /> : <AdornMenu />}
+            </Button>
 
-            {/* Center - Logo */}
+            {/* Centre — logo */}
             <Link to="/" className="absolute left-1/2 -translate-x-1/2">
-              <img
-                src="/logo-kayals.jpg"
-                alt="Kayals Lifestyle"
-                className="h-14 w-auto"
-              />
+              <img src="/logo-kayals.jpg" alt="Kayals Lifestyle" className="h-11 w-auto" />
             </Link>
 
-            {/* Right - Cart & Account */}
-            {/* Right - Account & Cart */}
-            <div className="flex items-center gap-1">
-              <Link to="/account">
-                <Button variant="ghost" className="h-10 w-10 p-0" style={{ height: '40px', width: '40px' }}>
-                  <AdornUser />
-                </Button>
+            {/* Right — wishlist, cart, account */}
+            <div className="flex items-center gap-0.5">
+              <Link
+                to="/wishlist"
+                aria-label="Wishlist"
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-md
+                           hover:bg-muted hover:text-brand-ink transition-colors"
+              >
+                <AdornHeart />
+                {wishlistItems > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-semibold">
+                    {wishlistItems}
+                  </span>
+                )}
               </Link>
-              <Button variant="ghost" className="h-10 w-10 relative p-0" style={{ height: '40px', width: '40px' }} onClick={() => setCartOpen(true)}>
+
+              <Button
+                variant="ghost"
+                className="h-9 w-9 relative p-0"
+                onClick={() => setCartOpen(true)}
+                aria-label="Cart"
+              >
                 <AdornCart />
                 {cartItems > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-[#800000] text-white text-[10px] flex items-center justify-center font-bold">
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-semibold">
                     {cartItems}
                   </span>
                 )}
               </Button>
+
+              <Link
+                to="/account"
+                aria-label="Account"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md
+                           hover:bg-muted hover:text-brand-ink transition-colors"
+              >
+                <AdornUser />
+              </Link>
             </div>
           </div>
 
@@ -102,7 +127,7 @@ const Header = () => {
                 <Input
                   type="text"
                   placeholder="Search here for all products"
-                  className="w-full pl-4 pr-12 py-3 h-12 border-border rounded-full text-base cursor-pointer"
+                  className="w-full pl-4 pr-12 py-3 h-12 border-border rounded-full font-body text-sm cursor-pointer"
                   readOnly
                 />
                 <Button
@@ -121,7 +146,7 @@ const Header = () => {
                 <Link
                   key={link.name}
                   to={link.href}
-                  className="text-sm font-medium uppercase tracking-wider hover:text-primary transition-colors"
+                  className="font-body text-sm font-semibold text-foreground hover:text-brand-ink transition-colors"
                 >
                   {link.name}
                 </Link>
@@ -140,7 +165,7 @@ const Header = () => {
                   <AdornHeart />
                 </Button>
                 {wishlistItems > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#800000] text-white text-xs flex items-center justify-center font-bold">
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">
                     {wishlistItems}
                   </span>
                 )}
@@ -148,7 +173,7 @@ const Header = () => {
               <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
                 <AdornCart />
                 {cartItems > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#800000] text-white text-xs flex items-center justify-center font-bold">
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">
                     {cartItems}
                   </span>
                 )}
@@ -160,26 +185,26 @@ const Header = () => {
 
           {/* Mobile Sidebar (Menu & Categories) */}
           {isMenuOpen && (
-            <div className="fixed inset-0 z-[60] lg:hidden">
+            <div className="fixed inset-0 z-[70] lg:hidden">
               {/* Backdrop */}
               <div
                 className="absolute inset-0 bg-black/50"
                 onClick={() => setIsMenuOpen(false)}
               />
               {/* Sidebar Content */}
-              <div className="absolute top-0 left-0 bottom-0 w-[85%] max-w-sm bg-background animate-slide-in">
-                <div className="flex justify-between items-center p-4 border-b border-border">
-                  <span className="font-heading font-bold text-lg">Menu</span>
+              <div className="absolute top-0 left-0 bottom-0 w-[85%] max-w-sm bg-background animate-slide-in flex flex-col">
+                <div className="flex justify-between items-center p-4 border-b border-border shrink-0">
+                  <span className="font-body text-base font-semibold text-foreground">Menu</span>
                   <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(false)}>
                     <X className="h-6 w-6" />
                   </Button>
                 </div>
 
-                <div className="p-4">
+                <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-24">
                   <Tabs defaultValue="menu" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 mb-6">
-                      <TabsTrigger value="menu">Menu</TabsTrigger>
-                      <TabsTrigger value="categories">Categories</TabsTrigger>
+                      <TabsTrigger value="menu" className="font-body text-sm font-semibold">Menu</TabsTrigger>
+                      <TabsTrigger value="categories" className="font-body text-sm font-semibold">Categories</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="menu" className="space-y-4">
@@ -187,11 +212,11 @@ const Header = () => {
                       {isAuthenticated && user ? (
                         <div className="mb-4 rounded-xl border border-border bg-muted/40 p-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#800000] text-white font-bold uppercase">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-white font-bold uppercase">
                               {(user.name?.trim()?.charAt(0) || "U")}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-heading font-semibold text-base truncate">
+                              <p className="font-body text-sm font-semibold text-foreground truncate">
                                 {user.name || "My Account"}
                               </p>
                               <p className="text-sm text-muted-foreground truncate">
@@ -202,14 +227,14 @@ const Header = () => {
                           <div className="mt-3 flex items-center gap-2">
                             <Link
                               to="/account"
-                              className="flex-1 text-center py-2 px-3 text-sm font-medium rounded-lg bg-[#800000] text-white hover:bg-[#600000] transition-colors"
+                              className="flex-1 text-center py-2 px-3 font-body text-sm font-semibold rounded-lg bg-primary text-white hover:bg-brand-ink transition-colors"
                               onClick={() => setIsMenuOpen(false)}
                             >
                               My Account
                             </Link>
                             <button
                               type="button"
-                              className="flex-1 text-center py-2 px-3 text-sm font-medium rounded-lg border border-border hover:bg-muted transition-colors"
+                              className="flex-1 text-center py-2 px-3 font-body text-sm font-semibold rounded-lg border border-border hover:bg-muted transition-colors"
                               onClick={() => {
                                 logout();
                                 setIsMenuOpen(false);
@@ -222,7 +247,7 @@ const Header = () => {
                       ) : (
                         <Link
                           to="/account"
-                          className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-4 hover:border-[#800000] transition-colors"
+                          className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-4 hover:border-primary transition-colors"
                           onClick={() => setIsMenuOpen(false)}
                         >
                           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100 text-green-700">
@@ -231,7 +256,7 @@ const Header = () => {
                             </svg>
                           </div>
                           <div className="min-w-0">
-                            <p className="font-heading font-semibold text-base">Login / Sign Up</p>
+                            <p className="font-body text-sm font-semibold text-foreground">Login / Sign Up</p>
                             <p className="text-sm text-muted-foreground">Login with WhatsApp OTP</p>
                           </div>
                         </Link>
@@ -242,7 +267,7 @@ const Header = () => {
                           <Link
                             key={link.name}
                             to={link.href}
-                            className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors"
+                            className="py-3 px-2 font-body text-base font-semibold text-foreground border-b border-border/50 hover:text-brand-ink transition-colors"
                             onClick={() => setIsMenuOpen(false)}
                           >
                             {link.name}
@@ -250,14 +275,14 @@ const Header = () => {
                         ))}
                         <Link
                           to="/account"
-                          className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors"
+                          className="py-3 px-2 font-body text-base font-semibold text-foreground border-b border-border/50 hover:text-brand-ink transition-colors"
                           onClick={() => setIsMenuOpen(false)}
                         >
                           My Account
                         </Link>
                         <Link
                           to="/wishlist"
-                          className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors flex items-center gap-2"
+                          className="py-3 px-2 font-body text-base font-semibold text-foreground border-b border-border/50 hover:text-brand-ink transition-colors flex items-center gap-2"
                           onClick={() => setIsMenuOpen(false)}
                         >
                           <WoodmartIcon name="heart" size={18} />
@@ -265,7 +290,7 @@ const Header = () => {
                         </Link>
                         <Link
                           to="/orders"
-                          className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors flex items-center gap-2"
+                          className="py-3 px-2 font-body text-base font-semibold text-foreground border-b border-border/50 hover:text-brand-ink transition-colors flex items-center gap-2"
                           onClick={() => setIsMenuOpen(false)}
                         >
                           <WoodmartIcon name="list" size={18} />
@@ -273,7 +298,7 @@ const Header = () => {
                         </Link>
                         <Link
                           to="/size-chart"
-                          className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors flex items-center gap-2"
+                          className="py-3 px-2 font-body text-base font-semibold text-foreground border-b border-border/50 hover:text-brand-ink transition-colors flex items-center gap-2"
                           onClick={() => setIsMenuOpen(false)}
                         >
                           <WoodmartIcon name="ruler" size={18} />
@@ -283,10 +308,10 @@ const Header = () => {
                     </TabsContent>
 
                     <TabsContent value="categories" className="space-y-4">
-                      <div className="flex flex-col space-y-2 max-h-[70vh] overflow-y-auto">
+                      <div className="flex flex-col space-y-2">
                         <Link
                           to="/collections/all"
-                          className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors"
+                          className="py-3 px-2 font-body text-base font-semibold text-foreground border-b border-border/50 hover:text-brand-ink transition-colors"
                           onClick={() => setIsMenuOpen(false)}
                         >
                           All Products
@@ -295,7 +320,7 @@ const Header = () => {
                           <Link
                             key={cat.id}
                             to={`/collections/${cat.slug}`}
-                            className="py-3 px-2 text-base font-medium border-b border-border/50 hover:text-primary transition-colors flex items-center justify-between"
+                            className="py-3 px-2 font-body text-base font-semibold text-foreground border-b border-border/50 hover:text-brand-ink transition-colors flex items-center justify-between"
                             onClick={() => setIsMenuOpen(false)}
                           >
                             <span>{cat.name}</span>
@@ -320,16 +345,18 @@ const Header = () => {
           <Input
             type="text"
             placeholder="Search here for all products"
-            className="w-full pl-4 pr-12 py-2 border-2 border-foreground rounded-xl cursor-pointer placeholder:font-medium h-10"
+            className="w-full h-11 pl-4 pr-14 border border-border rounded-md cursor-pointer font-body text-sm"
             readOnly
           />
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9"
+          {/* Gold action button; the field itself stays a plain input. */}
+          <span
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md
+                       bg-primary text-primary-foreground flex items-center justify-center
+                       transition-colors hover:bg-brand-ink"
+            aria-hidden="true"
           >
-            <AdornSearch />
-          </Button>
+            <AdornSearch size={15} />
+          </span>
         </div>
       </div>
     </>

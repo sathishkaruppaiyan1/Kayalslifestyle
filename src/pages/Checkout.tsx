@@ -777,7 +777,7 @@ const Checkout = () => {
             Add some items to your cart before checking out.
           </p>
           <Link to="/collections/all">
-            <Button className="bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold">
+            <Button variant="addToCart">
               CONTINUE SHOPPING
             </Button>
           </Link>
@@ -823,7 +823,7 @@ const Checkout = () => {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        className="mt-1 rounded-none"
+                        className="mt-1"
                         required
                         placeholder="Full Name (e.g. Sathish Kumar)"
                       />
@@ -840,7 +840,7 @@ const Checkout = () => {
                         name="houseNo"
                         value={formData.houseNo}
                         onChange={handleInputChange}
-                        className="mt-1 rounded-none"
+                        className="mt-1"
                         required
                         placeholder="e.g. Flat 101, Galaxy Apartments"
                       />
@@ -854,7 +854,7 @@ const Checkout = () => {
                         name="street"
                         value={formData.street}
                         onChange={handleInputChange}
-                        className="mt-1 rounded-none"
+                        className="mt-1"
                         required
                         placeholder="e.g. MG Road, Indiranagar"
                       />
@@ -868,7 +868,7 @@ const Checkout = () => {
                         name="landmark"
                         value={formData.landmark}
                         onChange={handleInputChange}
-                        className="mt-1 rounded-none"
+                        className="mt-1"
                         required
                         placeholder="e.g. Near City Hospital"
                       />
@@ -883,7 +883,7 @@ const Checkout = () => {
                           name="pincode"
                           value={formData.pincode}
                           onChange={handleInputChange}
-                          className="mt-1 rounded-none"
+                          className="mt-1"
                           required
                           placeholder="6 Digit Pincode"
                           maxLength={6}
@@ -905,7 +905,7 @@ const Checkout = () => {
                           name="city"
                           value={formData.city}
                           onChange={handleInputChange}
-                          className="mt-1 rounded-none"
+                          className="mt-1"
                           required
                           placeholder="City"
                         />
@@ -917,7 +917,7 @@ const Checkout = () => {
                           name="state"
                           value={formData.state}
                           onChange={handleInputChange}
-                          className="mt-1 rounded-none"
+                          className="mt-1"
                           required
                           placeholder="State"
                         />
@@ -932,7 +932,7 @@ const Checkout = () => {
                         name="country"
                         value={formData.country}
                         onChange={handleInputChange}
-                        className="mt-1 rounded-none bg-muted"
+                        className="mt-1 bg-muted"
                         required
                         readOnly
                       />
@@ -947,7 +947,7 @@ const Checkout = () => {
                         type="tel"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className="mt-1 rounded-none"
+                        className="mt-1"
                         required
                         maxLength={12}
                         placeholder="10-12 digit mobile number"
@@ -979,7 +979,7 @@ const Checkout = () => {
                         type="tel"
                         value={formData.whatsapp}
                         onChange={handleInputChange}
-                        className="mt-1 rounded-none"
+                        className="mt-1"
                         required
                         maxLength={10}
                         placeholder="10 digit WhatsApp number"
@@ -1002,7 +1002,7 @@ const Checkout = () => {
                         type="tel"
                         value={formData.alternatePhone}
                         onChange={handleInputChange}
-                        className="mt-1 rounded-none"
+                        className="mt-1"
                         required
                         maxLength={12}
                         placeholder="10-12 digit number"
@@ -1023,7 +1023,7 @@ const Checkout = () => {
                         type="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="mt-1 rounded-none"
+                        className="mt-1"
                         required
                         placeholder="your@email.com"
                       />
@@ -1139,7 +1139,7 @@ const Checkout = () => {
                   <Button
                     type="submit"
                     disabled={isProcessing}
-                    className="w-full h-14 mt-6 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold text-base"
+                    variant="addToCart" className="w-full h-14 mt-6"
                   >
                     {isProcessing ? (
                       <span className="flex items-center gap-2">

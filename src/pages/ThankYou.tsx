@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { CONTACT_PHONE } from "@/lib/siteContact";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CheckCircle } from "@phosphor-icons/react";
 import Layout from "@/components/layout/Layout";
@@ -79,7 +80,7 @@ const ThankYou = () => {
                   <p className="text-sm text-muted-foreground">
                     You will receive order confirmation to your WhatsApp from our number:
                   </p>
-                  <p className="font-bold text-lg">7990190234</p>
+                  <p className="font-bold text-lg">{CONTACT_PHONE}</p>
                 </div>
               </div>
 
@@ -97,7 +98,7 @@ const ThankYou = () => {
                   <p className="text-sm text-muted-foreground">
                     For any enquiries kindly WhatsApp to this number only:
                   </p>
-                  <p className="font-bold text-lg">7990190234</p>
+                  <p className="font-bold text-lg">{CONTACT_PHONE}</p>
                 </div>
               </div>
             </div>
@@ -155,7 +156,7 @@ const ThankYou = () => {
           {/* Continue Shopping */}
           <div className="text-center">
             <Link to="/collections/all">
-              <Button className="bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold px-8 h-12">
+              <Button variant="addToCart" className="px-8 h-12">
                 CONTINUE SHOPPING
               </Button>
             </Link>

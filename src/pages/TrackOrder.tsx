@@ -156,7 +156,7 @@ const TrackOrder = () => {
                             <div className="md:col-span-2 pt-2">
                                 <Button
                                     type="submit"
-                                    className="w-full h-12 text-base font-medium bg-[#800000] hover:bg-[#600000] text-white"
+                                    className="w-full h-12 text-base font-medium bg-primary hover:bg-brand-ink text-white"
                                     disabled={isLoading}
                                 >
                                     {isLoading ? (

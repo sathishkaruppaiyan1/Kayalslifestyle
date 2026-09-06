@@ -1,10 +1,14 @@
 import Layout from "@/components/layout/Layout";
+import Reveal from "@/components/ui/Reveal";
 import { useMemo, useEffect } from "react";
 
 import HeroBanner from "@/components/home/HeroBanner";
 import CategoryCarousel from "@/components/home/CategoryCarousel";
 import CategoryGrid from "@/components/home/CategoryGrid";
 import ProductSection from "@/components/home/ProductSection";
+import ShopByReels from "@/components/home/ShopByReels";
+import CategoryTabsCarousel from "@/components/home/CategoryTabsCarousel";
+import ProductCarousel from "@/components/home/ProductCarousel";
 import StorySection from "@/components/home/StorySection";
 import ReviewsSlider from "@/components/home/ReviewsSlider";
 import { useWooCommerceProducts, useWooCommerceCategories } from "@/hooks/useWooCommerce";
@@ -27,6 +31,22 @@ const Index = () => {
   });
 
   const { data: categories } = useWooCommerceCategories();
+
+  // Featured rail — the "best sellers" category. Matched on a slug prefix
+  // rather than an exact string: the slug differs between stores
+  // ("best-sellers" vs "best-sellers-of-kayalslifestyle"), and an exact match
+  // silently removes the whole section when it misses.
+  const bestSellers = categories?.categories?.find((c) =>
+    c.slug.startsWith("best-sellers")
+  );
+  const bestSellersId = bestSellers?.id?.toString();
+
+  const { data: featuredData, isLoading: featuredLoading } = useWooCommerceProducts({
+    category: bestSellersId,
+    perPage: 12,
+    skipVariations: true,
+    enabled: !!bestSellersId,
+  });
 
   const newArrivals = newArrivalsData?.products || [];
 
@@ -54,8 +74,21 @@ const Index = () => {
       {/* Circular category strip — sits above the hero, as on the reference site */}
       <CategoryCarousel />
       <HeroBanner />
+
+      {/* Instagram reels rail — content in src/lib/reels.ts */}
+      <Reveal>
+        <ShopByReels />
+      </Reveal>
+
       {/* Categories load independently and show immediately */}
-      <CategoryGrid />
+      <Reveal>
+        <CategoryGrid />
+      </Reveal>
+
+      {/* Category tabs + per-category product rail */}
+      <Reveal>
+        <CategoryTabsCarousel />
+      </Reveal>
 
       {/* Products section - show products immediately when available */}
       {newArrivalsError ? (
@@ -66,11 +99,13 @@ const Index = () => {
         <>
           {/* Show New Arrivals immediately when we have products - don't wait for all 8 */}
           {newArrivals.length > 0 ? (
-            <ProductSection
-              title="New Arrivals"
-              emoji="🔥"
-              products={newArrivals}
-            />
+            <Reveal>
+              <ProductSection
+                title="New Arrivals"
+                emoji="🔥"
+                products={newArrivals}
+              />
+            </Reveal>
           ) : newArrivalsLoading ? (
             <div className="container mx-auto px-4 py-8 lg:py-16">
               <div className="flex justify-center mb-8">
@@ -90,11 +125,13 @@ const Index = () => {
 
           {/* Show Hot Sellers - products tagged "hot-sellers" in WooCommerce */}
           {displayHotSellers.length > 0 ? (
-            <ProductSection
-              title="Hot Sellers"
-              emoji="⚡"
-              products={displayHotSellers}
-            />
+            <Reveal>
+              <ProductSection
+                title="Hot Sellers"
+                emoji="⚡"
+                products={displayHotSellers}
+              />
+            </Reveal>
           ) : hotSellersLoading ? (
             <div className="container mx-auto px-4 py-8 lg:py-16">
               <div className="flex justify-center mb-8">
@@ -112,8 +149,25 @@ const Index = () => {
             </div>
           ) : null}
 
-          <ReviewsSlider />
-          <StorySection />
+          {/* Featured rail — carousel, alongside the grids above */}
+          {(featuredLoading || (featuredData?.products?.length ?? 0) > 0) && (
+            <Reveal>
+              <ProductCarousel
+                title="Featured Picks"
+                emoji="✨"
+                products={featuredData?.products || []}
+                isLoading={featuredLoading}
+                viewAllLink={`/collections/${bestSellers?.slug ?? "all"}`}
+              />
+            </Reveal>
+          )}
+
+          <Reveal>
+            <ReviewsSlider />
+          </Reveal>
+          <Reveal>
+            <StorySection />
+          </Reveal>
         </>
       )}
     </Layout>

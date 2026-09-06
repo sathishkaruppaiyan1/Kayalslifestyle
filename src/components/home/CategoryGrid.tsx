@@ -14,7 +14,7 @@ const CategoryGrid = () => {
     return (
       <section className="pt-4 pb-12 lg:pb-16">
         <div className="container mx-auto px-4">
-          <h2 className="font-heading text-2xl lg:text-3xl font-semibold text-center mb-8">
+          <h2 className="section-title text-center mb-8">
             Shop By Category
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -35,9 +35,9 @@ const CategoryGrid = () => {
   }
 
   return (
-    <section className="pb-12 lg:pb-16 bg-[#FFF9E5]">
+    <section className="pb-12 lg:pb-16 bg-background">
       <div className="container mx-auto px-4">
-        <h2 className="font-heading text-2xl lg:text-3xl font-semibold text-center mb-8">
+        <h2 className="section-title text-center mb-8">
           Shop By Category
         </h2>
 

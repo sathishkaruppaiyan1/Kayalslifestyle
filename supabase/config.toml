@@ -1,4 +1,4 @@
-project_id = "pwgjbvtvmjbvfdrxgaob"
+project_id = "rzeopubfxaytrrnbthhm"
 
 [functions.woocommerce-products]
 verify_jwt = false
@@ -49,4 +49,26 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.whatsapp-send-review]
+verify_jwt = false
+
+# Razorpay posts here from its own servers with only an x-razorpay-signature
+# header — it cannot send a Supabase JWT. Without this the webhook is rejected
+# with 401 before the handler ever verifies the signature.
+[functions.razorpay-webhook]
+verify_jwt = false
+
+# Called from the browser with the anon key; grouped here for completeness.
+[functions.home-banners]
+verify_jwt = false
+
+[functions.pincode-lookup]
+verify_jwt = false
+
+[functions.woocommerce-orders]
+verify_jwt = false
+
+[functions.woocommerce-pages]
+verify_jwt = false
+
+[functions.woocommerce-payment-gateways]
 verify_jwt = false

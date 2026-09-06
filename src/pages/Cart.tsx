@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Minus, Plus, ShoppingBag, ArrowLeft, Trash, CircleNotch, Warning } from "@phosphor-icons/react";
 import Layout from "@/components/layout/Layout";
+import PageBand from "@/components/layout/PageBand";
 import { Button } from "@/components/ui/button";
 import { useCart, type StockIssue } from "@/contexts/CartContext";
 import { toast } from "sonner";
@@ -67,7 +68,7 @@ const Cart = () => {
               </div>
             )}
             <Link to="/collections/all">
-              <Button className="bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold px-8 py-6">
+              <Button variant="addToCart" className="px-8 py-6">
                 CONTINUE SHOPPING
               </Button>
             </Link>
@@ -80,12 +81,7 @@ const Cart = () => {
   return (
     <Layout>
       {/* Header */}
-      <div className="bg-[#FFF9E5] py-8 text-center">
-        <h1 className="font-heading text-3xl lg:text-4xl">Shopping Cart</h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Home &gt; Cart
-        </p>
-      </div>
+      <PageBand title="Shopping Cart" crumbs={[{ label: "Cart" }]} />
 
       <div className="container mx-auto px-4 py-8">
         {/* Stock validation banner */}
@@ -153,7 +149,7 @@ const Cart = () => {
                           )}
                           <button
                             onClick={() => removeFromCart(item.product.id, item.size, item.color)}
-                            className="text-sm text-muted-foreground hover:text-destructive transition-colors mt-3 flex items-center gap-2 group border border-black rounded-none px-2 py-1"
+                            className="text-sm text-muted-foreground hover:text-destructive hover:border-destructive transition-colors mt-3 flex items-center gap-2 group border border-border rounded-md px-2 py-1"
                           >
                             <Trash className="h-4 w-4 group-hover:text-destructive transition-colors" />
                             <span>Remove</span>
@@ -238,7 +234,7 @@ const Cart = () => {
             {/* Actions */}
             <div className="flex flex-wrap gap-4 pt-6 border-t border-border">
               <Link to="/collections/all">
-                <Button variant="outline" className="rounded-none font-bold">
+                <Button variant="outline">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Continue Shopping
                 </Button>
@@ -246,7 +242,7 @@ const Cart = () => {
               <Button
                 variant="outline"
                 onClick={clearCart}
-                className="rounded-none font-bold text-destructive hover:text-destructive"
+                className="text-destructive hover:text-destructive"
               >
                 Clear Cart
               </Button>
@@ -282,7 +278,7 @@ const Cart = () => {
 
               <Link to="/checkout" className="block mt-6">
                 <Button
-                  className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 rounded-none font-bold"
+                  variant="addToCart" className="w-full h-12"
                   disabled={isValidating}
                 >
                   {isValidating ? (

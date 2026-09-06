@@ -1,3 +1,5 @@
+import { CONTACT_PHONE, WHATSAPP_URL } from "@/lib/siteContact";
+
 const WhatsAppIcon = () => (
   <svg
     width="18"
@@ -14,12 +16,12 @@ const PromoBar = () => {
   return (
     <div className="promo-bar py-2 px-4 text-center text-sm">
       <a
-        href="https://wa.me/917990190234"
+        href={WHATSAPP_URL}
         target="_blank"
         rel="noopener noreferrer"
         className="font-medium tracking-wide hover:opacity-80 transition-opacity inline-flex items-center"
       >
-        For International Orders  <WhatsAppIcon /> 7990190234
+        For International Orders  <WhatsAppIcon /> {CONTACT_PHONE}
       </a>
     </div>
   );
