@@ -11,7 +11,7 @@ const SizeChart = () => {
             <img
               src="/size-chart.jpg"
               alt="Kayals Lifestyle Size Chart - Measurements in inches for sizes XS to 4XL"
-              className="w-full h-auto rounded-lg"
+              className="w-full h-auto rounded-lg animate-zoom-out"
               loading="lazy"
               decoding="async"
             />

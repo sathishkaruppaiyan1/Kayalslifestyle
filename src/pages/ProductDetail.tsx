@@ -634,7 +634,7 @@ const ProductDetail = () => {
                       <img
                         src="/size-chart.jpg"
                         alt="Kayals Lifestyle Size Chart"
-                        className="w-full h-auto rounded-lg"
+                        className="w-full h-auto rounded-lg animate-zoom-out"
                       />
                     </DialogContent>
                   </Dialog>
@@ -806,7 +806,7 @@ const ProductDetail = () => {
                   <div className="pb-4 text-sm text-muted-foreground leading-relaxed space-y-2">
                     <p>Available sizes: XS, S, M, L, XL, XXL, 3XL, 4XL</p>
                     <p>For size guidance, please refer to our size chart below.</p>
-                    <img src="/size-chart.jpg" alt="Size Chart" className="w-full h-auto rounded-lg my-3" />
+                    <img src="/size-chart.jpg" alt="Size Chart" className="w-full h-auto rounded-lg my-3 animate-zoom-out" />
                     <p>Full lining available (inside)</p>
                     <p>Best quality and best stitching</p>
                   </div>
@@ -967,7 +967,7 @@ const ProductDetail = () => {
                         {isVideo ? (
                           <video src={file} className="w-full h-full object-cover" muted />
                         ) : (
-                          <img src={file} alt="preview" className="w-full h-full object-cover" />
+                          <img src={file} alt="preview" className="w-full h-full object-cover animate-zoom-out" />
                         )}
                         <button
                           onClick={() => setReviewFiles(files => files.filter((_, i) => i !== idx))}
@@ -1082,7 +1082,7 @@ const ProductDetail = () => {
                                 <img
                                   src={mediaUrl}
                                   alt={`Review image ${idx + 1}`}
-                                  className="w-24 h-24 object-cover rounded-lg border border-border hover:opacity-90 transition-opacity"
+                                  className="w-24 h-24 object-cover rounded-lg border border-border hover:opacity-90 transition-opacity animate-zoom-out"
                                 />
                               </a>
                             );

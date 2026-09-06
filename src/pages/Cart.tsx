@@ -132,7 +132,7 @@ const Cart = () => {
                           <img
                             src={item.image || item.product.images[0] || "/placeholder.svg"}
                             alt={item.product.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover animate-zoom-out"
                           />
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col items-start text-left">

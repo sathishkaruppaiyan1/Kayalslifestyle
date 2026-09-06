@@ -32,7 +32,7 @@ const StorySection = () => {
           <img
             src="/happy-customers-family.jpg"
             alt="The Happy Customers Family of Kayalslifestyle, photographed together in gold sarees"
-            className="w-full h-auto rounded-lg shadow-card"
+            className="w-full h-auto rounded-lg shadow-card animate-zoom-out"
             loading="lazy"
             decoding="async"
             width="1200"

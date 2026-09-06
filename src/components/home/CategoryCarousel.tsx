@@ -76,7 +76,7 @@ const CategoryCarousel = () => {
                       alt={category.name}
                       loading="lazy"
                       decoding="async"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 animate-zoom-out"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         if (target.src !== "/placeholder.svg") {

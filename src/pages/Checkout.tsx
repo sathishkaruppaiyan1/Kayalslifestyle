@@ -797,7 +797,7 @@ const Checkout = () => {
               Back to Cart
             </Link>
             <Link to="/">
-              <img src="/logo-kayals.jpg" alt="Kayals Lifestyle" className="h-12" />
+              <img src="/logo-kayals.jpg" alt="Kayals Lifestyle" className="h-12 animate-zoom-out" />
             </Link>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Lock className="h-4 w-4" />
@@ -1097,7 +1097,7 @@ const Checkout = () => {
                           <img
                             src={item.image || item.product.images[0] || "/placeholder.svg"}
                             alt={item.product.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover animate-zoom-out"
                           />
                           <span className="absolute -top-1 -right-1 w-5 h-5 bg-foreground text-background text-xs font-bold rounded-full flex items-center justify-center">
                             {item.quantity}

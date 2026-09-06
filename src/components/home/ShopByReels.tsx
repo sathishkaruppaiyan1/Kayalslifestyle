@@ -77,7 +77,7 @@ const ShopByReels = () => {
                     alt={reel.title}
                     loading="lazy"
                     decoding="async"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 animate-zoom-out"
                     onError={(e) => {
                       const t = e.target as HTMLImageElement;
                       if (t.src !== window.location.origin + "/placeholder.svg") {

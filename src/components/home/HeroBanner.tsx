@@ -44,9 +44,9 @@ const HeroBanner = () => {
         <Link to="/collections/all">
           {/* React 18 forwards only the lowercase `fetchpriority` DOM attribute. */}
           <img
-            src="/new_arrival_banner.jpg"
-            alt="Shop Now"
-            className="w-full h-auto object-cover"
+            src="/hero-banner.jpg"
+            alt="Tradition Meets Everyday You — sarees, lehengas, gowns and salwars"
+            className="w-full h-auto object-cover animate-zoom-out"
           />
         </Link>
       </div>
@@ -123,7 +123,7 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
       <img
         src={banner.image_url}
         alt={banner.alt_text || "Banner"}
-        className="w-full h-auto object-cover"
+        className="w-full h-auto object-cover animate-zoom-out"
         loading="eager"
         {...({ fetchpriority: "high" } as Record<string, string>)}
         decoding="sync"

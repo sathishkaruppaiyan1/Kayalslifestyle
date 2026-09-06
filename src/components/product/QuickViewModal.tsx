@@ -74,7 +74,7 @@ const QuickViewModal = () => {
               <img
                 src={product.images[activeImage] || "/placeholder.svg"}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover animate-zoom-out"
               />
             </div>
             {product.images.length > 1 && (
@@ -89,7 +89,7 @@ const QuickViewModal = () => {
                     <img
                       src={image}
                       alt={`${product.name} ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover animate-zoom-out"
                     />
                   </button>
                 ))}

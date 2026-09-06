@@ -56,7 +56,7 @@ const CategoryGrid = () => {
                     alt={category.name}
                     loading="lazy"
                     decoding="async"
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 animate-zoom-out"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement;
                       if (target.src !== "/placeholder.svg") {
