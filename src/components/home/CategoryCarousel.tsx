@@ -9,6 +9,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useCarouselAutoplay } from "@/hooks/useCarouselAutoplay";
+import type { Category } from "@/types/product";
 
 /**
  * Category strip above the hero banner.
@@ -31,10 +32,17 @@ import { useCarouselAutoplay } from "@/hooks/useCarouselAutoplay";
 const ITEM_BASIS =
   "basis-1/4 sm:basis-1/5 md:basis-1/6 lg:basis-[12.5%] xl:basis-[10%]";
 
-const CategoryCarousel = () => {
-  const autoplay = useCarouselAutoplay(4500);
-  const { data, isLoading } = useWooCommerceCategories();
-  const categories = (data?.categories || []).filter((category) => !category.parentId);
+interface CategoryCarouselProps {
+  /** Pre-ordered list from the homepage builder; omit to show every top-level category. */
+  categories?: Category[];
+}
+
+const CategoryCarousel = ({ categories: provided }: CategoryCarouselProps = {}) => {
+  // Once a shopper flicks the strip it stays where they left it.
+  const autoplay = useCarouselAutoplay(4500, { stopOnInteraction: true });
+  const { data, isLoading: fetching } = useWooCommerceCategories();
+  const categories = provided ?? (data?.categories || []).filter((category) => !category.parentId);
+  const isLoading = !provided && fetching;
 
   if (isLoading) {
     return (
@@ -58,9 +66,14 @@ const CategoryCarousel = () => {
   return (
     <section className="pt-5 pb-6">
       <div className="container mx-auto px-4">
-        <Carousel opts={{ align: "start", loop: true }}
+        {/* dragFree: a flick glides with momentum instead of snapping one
+            column at a time — the difference between "sticky" and smooth on
+            a phone. Arrows sit inside the edges on mobile, outside on desktop. */}
+        <Carousel
+          opts={{ align: "start", loop: true, dragFree: true, duration: 28, skipSnaps: true }}
           plugins={autoplay}
-          className="w-full">
+          className="w-full"
+        >
           <CarouselContent className="-ml-3 md:-ml-5">
             {categories.map((category) => (
               <CarouselItem key={category.id} className={`pl-3 md:pl-5 ${ITEM_BASIS}`}>
@@ -93,8 +106,12 @@ const CategoryCarousel = () => {
             ))}
           </CarouselContent>
 
-          <CarouselPrevious className="hidden md:flex" />
-          <CarouselNext className="hidden md:flex" />
+          <CarouselPrevious
+            className="flex h-7 w-7 -left-2 bg-background/90 shadow-sm md:h-8 md:w-8 md:-left-12 md:bg-background"
+          />
+          <CarouselNext
+            className="flex h-7 w-7 -right-2 bg-background/90 shadow-sm md:h-8 md:w-8 md:-right-12 md:bg-background"
+          />
         </Carousel>
       </div>
     </section>

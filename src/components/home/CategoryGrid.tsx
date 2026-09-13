@@ -32,7 +32,7 @@ const CategoryGrid = ({
     return (
       <section className="pt-4 pb-12 lg:pb-16">
         <div className="container mx-auto px-4">
-          <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">{title}</h2>
+          <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">{title}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="space-y-3">
@@ -53,7 +53,7 @@ const CategoryGrid = ({
   return (
     <section className="pb-12 lg:pb-16 bg-background">
       <div className="container mx-auto px-4">
-        <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">{title}</h2>
+        <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">{title}</h2>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {displayedCategories.map((category, index) => (

@@ -12,25 +12,15 @@ verify_jwt = false
 [functions.woocommerce-variation-gallery]
 verify_jwt = false
 
-[functions.interakt-send-review]
+[functions.create-cashfree-order]
 verify_jwt = false
 
-[functions.interakt-tracking-update]
+[functions.verify-cashfree-payment]
 verify_jwt = false
 
-[functions.interakt-account-creation]
-verify_jwt = false
-
-[functions.interakt-send-otp]
-verify_jwt = false
-
-[functions.interakt-verify-otp]
-verify_jwt = false
-
-[functions.initiate-easebuzz-payment]
-verify_jwt = false
-
-[functions.verify-easebuzz-payment]
+# Cashfree posts here from its own servers with only an x-webhook-signature
+# header; the function verifies that HMAC itself.
+[functions.cashfree-webhook]
 verify_jwt = false
 
 [functions.whatsapp-send-otp]

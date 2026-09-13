@@ -79,13 +79,12 @@ supabase secrets set \
   SUPABASE_URL="https://<ref>.supabase.co" \
   SUPABASE_ANON_KEY="eyJ..." \
   SUPABASE_SERVICE_ROLE_KEY="eyJ..." \
-  INTERAKT_API_KEY="xxx" \
   RAZORPAY_KEY_ID="rzp_xxx" \
   RAZORPAY_KEY_SECRET="xxx" \
   RAZORPAY_WEBHOOK_SECRET="xxx" \
-  EASEBUZZ_KEY="xxx" \
-  EASEBUZZ_SALT="xxx" \
-  EASEBUZZ_ENV="test" \
+  CASHFREE_APP_ID="xxx" \
+  CASHFREE_SECRET_KEY="xxx" \
+  CASHFREE_ENV="sandbox" \
   WHATSAPP_ACCESS_TOKEN="xxx" \
   WHATSAPP_PHONE_NUMBER_ID="xxx" \
   WHATSAPP_API_VERSION="v21.0"
@@ -97,11 +96,10 @@ Which function needs what:
 | --- | --- |
 | `WOOCOMMERCE_STORE_URL` | all 7 `woocommerce-*`, `home-banners`, both payment-verify functions, `razorpay-webhook` |
 | `WOOCOMMERCE_CONSUMER_KEY` / `_SECRET` | all 7 `woocommerce-*`, payment-verify, `razorpay-webhook` |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | OTP send/verify, `woocommerce-products`, `woocommerce-reviews`, `verify-easebuzz-payment` |
-| `SUPABASE_ANON_KEY` | OTP send/verify, `verify-easebuzz-payment` |
-| `INTERAKT_API_KEY` | the 6 `interakt-*` functions — only `interakt-order-notification` is reached, and only on the Easebuzz path |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | OTP send/verify, `woocommerce-products`, `woocommerce-reviews`, `verify-cashfree-payment` |
+| `SUPABASE_ANON_KEY` | OTP send/verify, `verify-cashfree-payment` |
 | `RAZORPAY_*` | `create-razorpay-order`, `verify-razorpay-payment`, `razorpay-webhook` |
-| `EASEBUZZ_*` | `initiate-easebuzz-payment`, `verify-easebuzz-payment` |
+| `CASHFREE_*` | `create-cashfree-order`, `verify-cashfree-payment`, `cashfree-webhook` |
 | `WHATSAPP_*` | `_shared/whatsapp.ts`, used by the `whatsapp-*` functions |
 
 `home-banners` needs only `WOOCOMMERCE_STORE_URL`; `pincode-lookup` needs nothing.
@@ -140,16 +138,16 @@ supabase functions deploy whatsapp-order-notification
 supabase functions deploy create-razorpay-order
 supabase functions deploy verify-razorpay-payment
 supabase functions deploy razorpay-webhook              # called by Razorpay, not the browser
-supabase functions deploy initiate-easebuzz-payment
-supabase functions deploy verify-easebuzz-payment
-supabase functions deploy interakt-order-notification   # invoked by verify-easebuzz-payment
+supabase functions deploy create-cashfree-order
+supabase functions deploy verify-cashfree-payment
+supabase functions deploy cashfree-webhook
 ```
 
 If you only take one payment provider you can drop the other's functions:
 
-* **Razorpay only** — skip `initiate-easebuzz-payment`, `verify-easebuzz-payment`
-  and `interakt-order-notification` (nothing else calls it). 14 functions.
-* **Easebuzz only** — skip `create-razorpay-order`, `verify-razorpay-payment`
+* **Razorpay only** — skip `create-cashfree-order`, `verify-cashfree-payment`
+  and `cashfree-webhook`. 14 functions.
+* **Cashfree only** — skip `create-razorpay-order`, `verify-razorpay-payment`
   and `razorpay-webhook`. 14 functions.
 
 ### The 9 nothing calls
@@ -163,14 +161,8 @@ They are alternative or half-finished paths, safe to leave undeployed:
 | `whatsapp-account-creation` | never invoked |
 | `whatsapp-tracking-update` | never invoked; presumably for shipment updates |
 | `whatsapp-send-review` | never invoked; presumably a post-delivery review nudge |
-| `interakt-send-otp` | Interakt is a second WhatsApp provider; the app uses the Meta `whatsapp-*` pair |
-| `interakt-verify-otp` | as above |
-| `interakt-account-creation` | as above |
-| `interakt-send-review` | as above |
-| `interakt-tracking-update` | as above |
 
-Deploy them only if you plan to switch to Interakt or wire up tracking and
-review messages. To deploy everything regardless:
+Deploy them only if you wire up tracking and review messages. To deploy everything regardless:
 
 ```bash
 supabase functions deploy      # all 26
@@ -258,4 +250,4 @@ carrying them to the new project.
 | Response caching | `product_cache` table (10s list / 2s detail TTL) |
 | Login | WhatsApp OTP → `otps` + `users` tables |
 | Review photos | `review_media` table + `review-media` storage bucket |
-| Payments | Razorpay and Easebuzz edge functions |
+| Payments | Razorpay and Cashfree edge functions |

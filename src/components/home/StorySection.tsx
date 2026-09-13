@@ -4,13 +4,10 @@ import { CaretDown, CaretUp } from "@phosphor-icons/react";
 /**
  * Our Story — the founders' account of how Kayalslifestyle Boutique began.
  *
- * Opens with the "Happy Customers Family" group photo as a full-width banner,
- * then runs the story in a single centred column. Everything from the 2024
- * chapter onward sits behind "Read Full Story" so the homepage does not turn
- * into a 700-word wall of text.
- *
- * TODO: a portrait of Kayal & Madhu goes above the sign-off — drop the file in
- * public/ and render it where FOUNDER_PORTRAIT is referenced below.
+ * Desktop: founders' portrait on the left (sticky, so it stays in view while
+ * the story scrolls), story on the right. Mobile: portrait above the story.
+ * Everything from the 2024 chapter onward sits behind "Read Full Story" so
+ * the homepage does not turn into a 700-word wall of text.
  */
 
 const StorySection = () => {
@@ -18,10 +15,10 @@ const StorySection = () => {
 
   return (
     <section className="py-12 lg:py-20 bg-muted">
-      <div className="container mx-auto px-4 max-w-4xl">
+      <div className="container mx-auto px-4 max-w-6xl">
         {/* Heading */}
         <div className="flex flex-col items-center text-center mb-8">
-          <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
+          <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
             Our Story
           </h2>
           <p className="mt-5 text-base lg:text-lg italic text-brand-ink font-medium">
@@ -29,16 +26,18 @@ const StorySection = () => {
           </p>
         </div>
 
-        <figure className="mb-10 text-center">
+        {/* Portrait left / story right on desktop; stacked on mobile */}
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-10 lg:gap-16 items-start">
+        <figure className="text-center lg:sticky lg:top-28">
           <img
             src="/Kayals-4.jpeg"
             alt="Kayal and Madhu, Founders of Kayalslifestyle Boutique"
             loading="lazy"
             decoding="async"
-            className="w-[235px] h-[300px] mx-auto rounded-lg object-cover object-[center_top] shadow-card transition-transform duration-300 hover:scale-[1.02]"
+            className="w-[235px] h-[300px] lg:w-full lg:h-auto lg:max-w-[480px] lg:aspect-[4/5] mx-auto rounded-lg object-cover object-[center_top] shadow-card transition-transform duration-300 hover:scale-[1.02]"
           />
           <figcaption className="mt-4">
-            <p className="text-foreground font-semibold text-base">
+            <p className="text-foreground font-semibold text-base lg:text-lg">
               Kayal &amp; Madhu
             </p>
             <p className="text-sm text-muted-foreground">
@@ -231,6 +230,7 @@ const StorySection = () => {
               </>
             )}
           </button>
+        </div>
         </div>
       </div>
     </section>

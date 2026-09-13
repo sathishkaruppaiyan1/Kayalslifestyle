@@ -1,7 +1,7 @@
 import WhatsAppIcon from "./WhatsAppIcon";
 
 const WHATSAPP_URL =
-  "https://api.whatsapp.com/send/?phone=918220027625&text&type=phone_number&app_absent=0";
+  "https://api.whatsapp.com/send/?phone=918220020267&text&type=phone_number&app_absent=0";
 
 const FloatingWhatsAppButton = () => (
   <a

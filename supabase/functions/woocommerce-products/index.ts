@@ -64,9 +64,11 @@ serve(async (req) => {
     const skipVariations = url.searchParams.get('skip_variations') === 'true'; // Skip variations for list views
     const status = url.searchParams.get('status') || 'publish';
     const tag = url.searchParams.get('tag') || '';
+    // Explicit ID list (homepage rails); WooCommerce returns them in the given order with orderby=include
+    const include = (url.searchParams.get('include') || '').split(',').filter((id) => /^\d+$/.test(id)).join(',');
 
     // Build cache key from all query parameters
-    const cacheKey = `${productId || 'list'}:${categoryId}:${page}:${perPage}:${search}:${tag}:${skipVariations}:${status}`;
+    const cacheKey = `${productId || 'list'}:${categoryId}:${page}:${perPage}:${search}:${tag}:${include}:${skipVariations}:${status}`;
     const cacheTTL = productId ? DETAIL_CACHE_TTL : LIST_CACHE_TTL;
     const cacheHeaders = productId ? detailCacheHeaders : listCacheHeaders;
 
@@ -133,6 +135,10 @@ serve(async (req) => {
 
       if (search) {
         apiUrl += `&search=${encodeURIComponent(search)}`;
+      }
+
+      if (include) {
+        apiUrl += `&include=${include}&orderby=include`;
       }
 
       // Tag filter - supports tag ID (numeric) or tag slug (text)

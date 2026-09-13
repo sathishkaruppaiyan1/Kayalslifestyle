@@ -9,7 +9,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useCarouselAutoplay } from "@/hooks/useCarouselAutoplay";
-import { REELS } from "@/lib/reels";
+import { REELS, type Reel } from "@/lib/reels";
 
 /**
  * Shop by Reels — a swipeable strip of Instagram reels.
@@ -22,11 +22,17 @@ import { REELS } from "@/lib/reels";
  *
  * Content lives in src/lib/reels.ts.
  */
-const ShopByReels = () => {
+interface ShopByReelsProps {
+  /** Reels from the homepage builder; omit to use src/lib/reels.ts. */
+  reels?: Reel[];
+  title?: string;
+}
+
+const ShopByReels = ({ reels = REELS, title = "Shop by Reels" }: ShopByReelsProps = {}) => {
   const autoplay = useCarouselAutoplay(4000);
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
 
-  if (REELS.length === 0) return null;
+  if (reels.length === 0) return null;
 
   const play = (id: string) => {
     const v = videoRefs.current[id];
@@ -44,9 +50,8 @@ const ShopByReels = () => {
     <section className="py-10 lg:py-14 border-t border-border">
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center text-center mb-8">
-          <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
-            {/* <h2 className="section-title rule-gold">*/}
-            Shop by Reels
+          <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
+            {title}
           </h2>
         </div>
 
@@ -56,7 +61,7 @@ const ShopByReels = () => {
           className="w-full"
         >
           <CarouselContent className="-ml-3 md:-ml-4">
-            {REELS.map((reel) => (
+            {reels.map((reel) => (
               <CarouselItem
                 key={reel.id}
                 className="pl-3 md:pl-4 basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5"

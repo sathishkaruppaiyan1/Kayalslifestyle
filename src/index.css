@@ -273,9 +273,11 @@
   }
 
   /* Shared section heading used across home / archive / product. */
+  /* Section headings (New Arrivals, Hot Sellers, …). Extra-bold so they
+     read as titles at a glance; the 800 weight is loaded in index.html. */
   .section-title {
     font-family: var(--font-heading);
-    @apply text-xl lg:text-2xl font-semibold text-foreground;
+    @apply text-xl lg:text-2xl font-extrabold tracking-tight text-foreground;
   }
 
   /* Thin gold keyline under a heading. */

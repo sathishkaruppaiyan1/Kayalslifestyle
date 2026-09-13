@@ -15,8 +15,12 @@ import Autoplay from "embla-carousel-autoplay";
  *
  * Pass the result straight to <Carousel plugins={...}>. Autoplay needs
  * `loop: true` in the carousel opts to keep running past the last slide.
+ *
+ * `stopOnInteraction: true` is for strips a shopper actively flicks through
+ * (the category scroller): once they touch it, it stays put instead of
+ * lurching on a few seconds later mid-swipe.
  */
-export const useCarouselAutoplay = (delay = 4000) => {
+export const useCarouselAutoplay = (delay = 4000, { stopOnInteraction = false } = {}) => {
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
@@ -31,7 +35,7 @@ export const useCarouselAutoplay = (delay = 4000) => {
     () =>
       reducedMotion
         ? []
-        : [Autoplay({ delay, stopOnInteraction: false, stopOnMouseEnter: true })],
-    [delay, reducedMotion],
+        : [Autoplay({ delay, stopOnInteraction, stopOnMouseEnter: true })],
+    [delay, reducedMotion, stopOnInteraction],
   );
 };

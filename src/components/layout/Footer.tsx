@@ -148,7 +148,7 @@ const Footer = () => {
                 );
               })}
               <a
-                href="https://api.whatsapp.com/send/?phone=918220027625&text&type=phone_number&app_absent=0"
+                href="https://api.whatsapp.com/send/?phone=918220020267&text&type=phone_number&app_absent=0"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:opacity-80 transition-opacity"
@@ -161,7 +161,17 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-promo-foreground/15 mt-12 pt-8 text-center text-sm text-promo-foreground/50">
-          <p>© {new Date().getFullYear()} Kayals Lifestyle. All Rights Reserved. Design by Sathishkaruppaiyan</p>
+          <p>
+            © {new Date().getFullYear()} Kayals Lifestyle. All Rights Reserved. Design by{" "}
+            <a
+              href="https://sathishkaruppaiyan.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-primary transition-colors"
+            >
+              Sathishkaruppaiyan
+            </a>
+          </p>
         </div>
       </div>
     </footer>

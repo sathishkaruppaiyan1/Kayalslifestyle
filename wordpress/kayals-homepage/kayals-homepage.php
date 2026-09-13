@@ -1,0 +1,638 @@
+<?php
+/**
+ * Plugin Name: Kayals Homepage Builder
+ * Description: Build the storefront homepage from WP admin — top bar messages, category strip, hero banners, reels, product rails (Hot Sellers, Featured Picks…), browse-by-category tabs and customer review images. Drag to reorder; the React storefront reads everything from /wp-json/kayals/v1/homepage.
+ * Version:     1.2.1
+ * Author:      Kayals Lifestyle
+ * Requires Plugins: woocommerce
+ * License:     GPL-2.0-or-later
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+final class Kayals_Homepage {
+
+	const OPTION     = 'kayals_homepage';
+	const TRANSIENT  = 'kayals_homepage_public';
+	const CAP        = 'manage_woocommerce';
+	const REST_NS    = 'kayals/v1';
+	const VERSION    = '1.2.1';
+
+	/** Section types and the fields each one carries. Anything else is dropped on save. */
+	const TYPES = array( 'category_strip', 'hero', 'reels', 'products', 'category_tabs', 'reviews' );
+
+	public static function init() {
+		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'admin_assets' ) );
+		add_action( 'wp_ajax_kayals_hp_save', array( __CLASS__, 'ajax_save' ) );
+		add_action( 'wp_ajax_kayals_hp_search_products', array( __CLASS__, 'ajax_search_products' ) );
+		add_action( 'wp_ajax_kayals_hp_products_by_ids', array( __CLASS__, 'ajax_products_by_ids' ) );
+		add_action( 'rest_api_init', array( __CLASS__, 'rest_routes' ) );
+
+		// Any catalogue change can alter a rail, so drop the cached payload.
+		foreach ( array( 'save_post_product', 'deleted_post', 'created_product_cat', 'edited_product_cat', 'delete_product_cat' ) as $hook ) {
+			add_action( $hook, array( __CLASS__, 'flush_cache' ) );
+		}
+	}
+
+	public static function flush_cache() {
+		delete_transient( self::TRANSIENT );
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Admin                                                                */
+	/* ------------------------------------------------------------------ */
+
+	public static function admin_menu() {
+		add_menu_page(
+			'Homepage Builder',
+			'Homepage',
+			self::CAP,
+			'kayals-homepage',
+			array( __CLASS__, 'render_admin' ),
+			'dashicons-layout',
+			56
+		);
+	}
+
+	public static function render_admin() {
+		echo '<div class="wrap kayals-hp-wrap"><h1>Homepage Builder</h1>';
+		echo '<p class="description">Drag sections to reorder them. Changes go live on the storefront as soon as you save.</p>';
+		echo '<div id="kayals-hp-app"><p>Loading…</p></div></div>';
+	}
+
+	public static function admin_assets( $hook ) {
+		if ( 'toplevel_page_kayals-homepage' !== $hook ) {
+			return;
+		}
+		wp_enqueue_media();
+		wp_enqueue_style( 'kayals-hp', plugins_url( 'admin/app.css', __FILE__ ), array(), self::VERSION );
+		wp_enqueue_script( 'kayals-hp', plugins_url( 'admin/app.js', __FILE__ ), array( 'jquery', 'jquery-ui-sortable' ), self::VERSION, true );
+
+		wp_localize_script(
+			'kayals-hp',
+			'KayalsHP',
+			array(
+				'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
+				'nonce'      => wp_create_nonce( 'kayals_hp' ),
+				'data'       => self::get_config(),
+				'categories' => self::all_terms( 'product_cat' ),
+				'restUrl'    => rest_url( self::REST_NS . '/homepage' ),
+			)
+		);
+	}
+
+	private static function all_terms( $taxonomy ) {
+		$terms = get_terms( array( 'taxonomy' => $taxonomy, 'hide_empty' => false, 'orderby' => 'name' ) );
+		if ( is_wp_error( $terms ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( $terms as $t ) {
+			$out[] = array(
+				'id'     => (int) $t->term_id,
+				'name'   => $t->name,
+				'slug'   => $t->slug,
+				'parent' => (int) $t->parent,
+				'count'  => (int) $t->count,
+			);
+		}
+		return $out;
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Storage                                                              */
+	/* ------------------------------------------------------------------ */
+
+	public static function get_config() {
+		$config = get_option( self::OPTION );
+		if ( ! is_array( $config ) || empty( $config['sections'] ) ) {
+			return self::default_config();
+		}
+		if ( empty( $config['topbar'] ) || ! is_array( $config['topbar'] ) ) {
+			$config['topbar'] = self::default_topbar();
+		}
+		// Earlier versions had tag-based and "latest" sources; both collapse
+		// into "hand-picked, empty = newest" now.
+		foreach ( $config['sections'] as &$sec ) {
+			if ( 'products' === ( $sec['type'] ?? '' ) && in_array( $sec['source'] ?? '', array( 'tag', 'latest' ), true ) ) {
+				$sec['source'] = 'manual';
+			}
+			unset( $sec['tag'] );
+		}
+		unset( $sec );
+		return $config;
+	}
+
+	/** The announcement bar the storefront ships with today. */
+	private static function default_topbar() {
+		return array(
+			'enabled' => true,
+			'items'   => array(
+				array( 'type' => 'text', 'text' => 'Free Shipping in India', 'phone' => '', 'link' => '' ),
+				array( 'type' => 'text', 'text' => '15 to 20 Days Delivery Time', 'phone' => '', 'link' => '' ),
+				array( 'type' => 'whatsapp', 'text' => 'For International & Wholesale Orders', 'phone' => '+91 8220027625', 'link' => '' ),
+			),
+		);
+	}
+
+	/** Mirrors what the storefront renders today so activating the plugin changes nothing until you edit. */
+	private static function default_config() {
+		$best     = self::find_term_by_prefix( 'product_cat', 'best-sellers' );
+		$trending = self::find_term_by_prefix( 'product_cat', 'trending' );
+
+		$sections = array(
+			array( 'id' => 'strip', 'type' => 'category_strip', 'enabled' => true, 'title' => '', 'items' => array() ),
+			array( 'id' => 'hero', 'type' => 'hero', 'enabled' => true, 'title' => '', 'items' => array() ),
+			array( 'id' => 'reels', 'type' => 'reels', 'enabled' => true, 'title' => 'Shop by Reels', 'items' => array() ),
+			// Hand-picked with nothing picked = newest products, so these show
+			// the latest arrivals until someone curates them.
+			array(
+				'id' => 'new', 'type' => 'products', 'enabled' => true, 'title' => 'New Arrivals', 'emoji' => '🔥',
+				'layout' => 'grid', 'source' => 'manual', 'category' => 0, 'limit' => 8, 'products' => array(), 'view_all' => '',
+			),
+			array(
+				'id' => 'hot', 'type' => 'products', 'enabled' => true, 'title' => 'Hot Sellers', 'emoji' => '⚡',
+				'layout' => 'grid', 'source' => 'manual', 'category' => 0, 'limit' => 8, 'products' => array(), 'view_all' => '',
+			),
+			array(
+				'id' => 'featured', 'type' => 'products', 'enabled' => true, 'title' => 'Featured Picks', 'emoji' => '✨',
+				'layout' => 'carousel', 'source' => 'category', 'category' => $best ? (int) $best->term_id : 0, 'limit' => 12, 'products' => array(), 'view_all' => '',
+			),
+			array(
+				'id' => 'trending', 'type' => 'products', 'enabled' => (bool) $trending, 'title' => 'Trending Collections', 'emoji' => '🔥',
+				'layout' => 'carousel', 'source' => 'category', 'category' => $trending ? (int) $trending->term_id : 0, 'limit' => 12, 'products' => array(), 'view_all' => '',
+			),
+			array( 'id' => 'tabs', 'type' => 'category_tabs', 'enabled' => true, 'title' => 'Browse by Category', 'items' => array() ),
+			array( 'id' => 'reviews', 'type' => 'reviews', 'enabled' => true, 'title' => 'What Our Customers Say', 'items' => array() ),
+		);
+
+		return array( 'topbar' => self::default_topbar(), 'sections' => $sections );
+	}
+
+	private static function find_term_by_prefix( $taxonomy, $prefix ) {
+		$terms = get_terms( array( 'taxonomy' => $taxonomy, 'hide_empty' => false ) );
+		if ( is_wp_error( $terms ) ) {
+			return null;
+		}
+		foreach ( $terms as $t ) {
+			if ( 0 === strpos( $t->slug, $prefix ) ) {
+				return $t;
+			}
+		}
+		return null;
+	}
+
+	/** Whitelist every field so the option can never carry markup or unknown keys. */
+	private static function sanitize_config( $raw ) {
+		$out = array( 'topbar' => self::sanitize_topbar( $raw['topbar'] ?? null ), 'sections' => array() );
+		if ( ! is_array( $raw ) || empty( $raw['sections'] ) || ! is_array( $raw['sections'] ) ) {
+			return $out;
+		}
+
+		foreach ( $raw['sections'] as $s ) {
+			if ( ! is_array( $s ) || empty( $s['type'] ) || ! in_array( $s['type'], self::TYPES, true ) ) {
+				continue;
+			}
+			$sec = array(
+				'id'      => sanitize_key( $s['id'] ?? wp_generate_uuid4() ),
+				'type'    => $s['type'],
+				'enabled' => ! empty( $s['enabled'] ),
+				'title'   => sanitize_text_field( $s['title'] ?? '' ),
+			);
+			$items = ( isset( $s['items'] ) && is_array( $s['items'] ) ) ? $s['items'] : array();
+
+			switch ( $s['type'] ) {
+				case 'category_strip':
+				case 'category_tabs':
+					$sec['items'] = array_values( array_filter( array_map( 'absint', array_map( function ( $i ) { return is_array( $i ) ? ( $i['id'] ?? 0 ) : $i; }, $items ) ) ) );
+					break;
+
+				case 'hero':
+					$sec['items'] = array();
+					foreach ( $items as $i ) {
+						if ( ! is_array( $i ) || empty( $i['image'] ) ) {
+							continue;
+						}
+						$sec['items'][] = array(
+							'image'        => esc_url_raw( $i['image'] ),
+							'mobile_image' => esc_url_raw( $i['mobile_image'] ?? '' ),
+							'link'         => sanitize_text_field( $i['link'] ?? '' ),
+							'alt'          => sanitize_text_field( $i['alt'] ?? '' ),
+						);
+					}
+					break;
+
+				case 'reels':
+					$sec['items'] = array();
+					foreach ( $items as $i ) {
+						if ( ! is_array( $i ) || empty( $i['thumb'] ) ) {
+							continue;
+						}
+						$sec['items'][] = array(
+							'title' => sanitize_text_field( $i['title'] ?? '' ),
+							'thumb' => esc_url_raw( $i['thumb'] ),
+							'href'  => esc_url_raw( $i['href'] ?? '' ),
+							'shop'  => sanitize_text_field( $i['shop'] ?? '' ),
+							'video' => esc_url_raw( $i['video'] ?? '' ),
+						);
+					}
+					break;
+
+				case 'reviews':
+					$sec['items'] = array();
+					foreach ( $items as $i ) {
+						if ( ! is_array( $i ) || empty( $i['image'] ) ) {
+							continue;
+						}
+						$sec['items'][] = array(
+							'image'   => esc_url_raw( $i['image'] ),
+							'caption' => sanitize_text_field( $i['caption'] ?? '' ),
+						);
+					}
+					break;
+
+				case 'products':
+					$source = 'category' === ( $s['source'] ?? '' ) ? 'category' : 'manual';
+					$layout = in_array( $s['layout'] ?? '', array( 'grid', 'carousel' ), true ) ? $s['layout'] : 'grid';
+					$sec['emoji']    = sanitize_text_field( $s['emoji'] ?? '' );
+					$sec['layout']   = $layout;
+					$sec['source']   = $source;
+					$sec['category'] = absint( $s['category'] ?? 0 );
+					$sec['limit']    = max( 1, min( 48, absint( $s['limit'] ?? 8 ) ) );
+					$sec['view_all'] = sanitize_text_field( $s['view_all'] ?? '' );
+					$sec['products'] = array_values( array_filter( array_map( 'absint', (array) ( $s['products'] ?? array() ) ) ) );
+					break;
+			}
+
+			$out['sections'][] = $sec;
+		}
+		return $out;
+	}
+
+	private static function sanitize_topbar( $raw ) {
+		if ( ! is_array( $raw ) ) {
+			return self::default_topbar();
+		}
+		$items = array();
+		foreach ( ( isset( $raw['items'] ) && is_array( $raw['items'] ) ) ? $raw['items'] : array() as $i ) {
+			if ( ! is_array( $i ) ) {
+				continue;
+			}
+			$type = ( 'whatsapp' === ( $i['type'] ?? '' ) ) ? 'whatsapp' : 'text';
+			$text = sanitize_text_field( $i['text'] ?? '' );
+			$phone = sanitize_text_field( $i['phone'] ?? '' );
+			if ( '' === $text && '' === $phone ) {
+				continue;
+			}
+			$items[] = array(
+				'type'  => $type,
+				'text'  => $text,
+				'phone' => 'whatsapp' === $type ? $phone : '',
+				'link'  => 'text' === $type ? sanitize_text_field( $i['link'] ?? '' ) : '',
+			);
+		}
+		return array( 'enabled' => ! empty( $raw['enabled'] ), 'items' => $items );
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* AJAX (admin only)                                                    */
+	/* ------------------------------------------------------------------ */
+
+	private static function guard() {
+		check_ajax_referer( 'kayals_hp', 'nonce' );
+		if ( ! current_user_can( self::CAP ) ) {
+			wp_send_json_error( 'Not allowed', 403 );
+		}
+	}
+
+	public static function ajax_save() {
+		self::guard();
+		$raw = json_decode( wp_unslash( $_POST['config'] ?? '' ), true );
+		if ( null === $raw ) {
+			wp_send_json_error( 'Invalid JSON', 400 );
+		}
+		$config = self::sanitize_config( $raw );
+		update_option( self::OPTION, $config, false );
+		self::flush_cache();
+		wp_send_json_success( $config );
+	}
+
+	public static function ajax_search_products() {
+		self::guard();
+		$term = sanitize_text_field( wp_unslash( $_GET['q'] ?? '' ) );
+		// Same search WooCommerce's own product picker uses: title, SKU, content.
+		$store = WC_Data_Store::load( 'product' );
+		$ids   = $store->search_products( $term, '', true, true, 20 );
+		if ( empty( $ids ) ) {
+			wp_send_json_success( array() );
+		}
+		$products = wc_get_products( array( 'include' => $ids, 'limit' => 20, 'status' => 'publish', 'orderby' => 'title', 'order' => 'ASC' ) );
+		wp_send_json_success( array_map( array( __CLASS__, 'product_summary' ), $products ) );
+	}
+
+	public static function ajax_products_by_ids() {
+		self::guard();
+		$ids = array_filter( array_map( 'absint', explode( ',', sanitize_text_field( wp_unslash( $_GET['ids'] ?? '' ) ) ) ) );
+		if ( empty( $ids ) ) {
+			wp_send_json_success( array() );
+		}
+		$products = wc_get_products( array( 'include' => $ids, 'limit' => -1, 'status' => array( 'publish', 'draft', 'private' ) ) );
+		// Keep the admin's order, not the DB's.
+		$by_id = array();
+		foreach ( $products as $p ) {
+			$by_id[ $p->get_id() ] = self::product_summary( $p );
+		}
+		$out = array();
+		foreach ( $ids as $id ) {
+			if ( isset( $by_id[ $id ] ) ) {
+				$out[] = $by_id[ $id ];
+			}
+		}
+		wp_send_json_success( $out );
+	}
+
+	private static function product_summary( WC_Product $p ) {
+		$image_id = $p->get_image_id();
+		return array(
+			'id'     => $p->get_id(),
+			'name'   => $p->get_name(),
+			'price'  => html_entity_decode( wp_strip_all_tags( wc_price( (float) $p->get_price() ) ), ENT_QUOTES, 'UTF-8' ),
+			'status' => $p->get_status(),
+			'image'  => $image_id ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : '',
+		);
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Public REST                                                          */
+	/* ------------------------------------------------------------------ */
+
+	public static function rest_routes() {
+		register_rest_route(
+			self::REST_NS,
+			'/homepage',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'rest_homepage' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+	}
+
+	public static function rest_homepage() {
+		$payload = get_transient( self::TRANSIENT );
+		if ( false === $payload ) {
+			$payload = self::build_public_payload();
+			set_transient( self::TRANSIENT, $payload, 5 * MINUTE_IN_SECONDS );
+		}
+		$response = new WP_REST_Response( $payload );
+		$response->header( 'Cache-Control', 'public, max-age=60' );
+		return $response;
+	}
+
+	/**
+	 * Resolve the saved config into what the storefront needs: category IDs
+	 * become category objects, product rails become ordered product-ID lists
+	 * (the storefront already has a rich product transformer; we just tell it
+	 * which IDs, in what order).
+	 */
+	private static function build_public_payload() {
+		$config   = self::get_config();
+		$sections = array();
+
+		foreach ( $config['sections'] as $s ) {
+			if ( empty( $s['enabled'] ) ) {
+				continue;
+			}
+			$pub = array(
+				'id'    => $s['id'],
+				'type'  => $s['type'],
+				'title' => $s['title'],
+			);
+
+			switch ( $s['type'] ) {
+				case 'category_strip':
+					$pub['categories'] = self::resolve_categories( $s['items'], true );
+					break;
+
+				case 'category_tabs':
+					$pub['categories'] = self::resolve_categories( $s['items'], false );
+					break;
+
+				case 'hero':
+				case 'reels':
+				case 'reviews':
+					$pub['items'] = $s['items'];
+					break;
+
+				case 'products':
+					$ids                = self::resolve_product_ids( $s );
+					$pub['emoji']       = $s['emoji'];
+					$pub['layout']      = $s['layout'];
+					$pub['product_ids'] = $ids;
+					$pub['products']    = self::product_cards( $ids );
+					$pub['view_all']    = self::resolve_view_all( $s );
+					break;
+			}
+			$sections[] = $pub;
+		}
+
+		$topbar = $config['topbar'];
+		foreach ( $topbar['items'] as &$item ) {
+			// Ready-made wa.me link so the storefront doesn't have to parse the number.
+			$digits      = preg_replace( '/\D+/', '', $item['phone'] );
+			$item['url'] = 'whatsapp' === $item['type'] && $digits ? 'https://wa.me/' . $digits : $item['link'];
+		}
+		unset( $item );
+
+		return array(
+			'version'   => self::VERSION,
+			'generated' => gmdate( 'c' ),
+			'topbar'    => $topbar,
+			'sections'  => $sections,
+		);
+	}
+
+	/**
+	 * Empty list = "every category" so an untouched section keeps today's
+	 * behaviour: the strip shows top-level categories, the tabs show all of them.
+	 */
+	private static function resolve_categories( $ids, $top_level_only ) {
+		if ( empty( $ids ) ) {
+			$args = array( 'taxonomy' => 'product_cat', 'hide_empty' => true, 'orderby' => 'menu_order', 'order' => 'ASC' );
+			if ( $top_level_only ) {
+				$args['parent'] = 0;
+			}
+			$terms = get_terms( $args );
+			$terms = is_wp_error( $terms ) ? array() : $terms;
+		} else {
+			$terms = array();
+			foreach ( $ids as $id ) {
+				$t = get_term( $id, 'product_cat' );
+				if ( $t && ! is_wp_error( $t ) ) {
+					$terms[] = $t;
+				}
+			}
+		}
+		$out = array();
+		foreach ( $terms as $t ) {
+			if ( in_array( $t->slug, array( 'uncategorized', 'all-products' ), true ) ) {
+				continue;
+			}
+			$thumb_id = (int) get_term_meta( $t->term_id, 'thumbnail_id', true );
+			$out[]    = array(
+				'id'       => (string) $t->term_id,
+				'name'     => $t->name,
+				'slug'     => $t->slug,
+				'image'    => $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'medium' ) : '',
+				'count'    => (int) $t->count,
+				'parentId' => $t->parent ? (string) $t->parent : null,
+			);
+		}
+		return $out;
+	}
+
+	private static function resolve_product_ids( $s ) {
+		$limit = (int) $s['limit'];
+
+		$newest = array( 'status' => 'publish', 'limit' => $limit, 'orderby' => 'date', 'order' => 'DESC', 'return' => 'ids' );
+
+		if ( 'manual' === $s['source'] ) {
+			// Nothing curated yet → newest products, so the rail is never empty.
+			if ( empty( $s['products'] ) ) {
+				return array_map( 'intval', wc_get_products( $newest ) );
+			}
+			// Every picked product shows (the limit only caps automatic lists);
+			// drop anything unpublished but keep the admin's order.
+			$live = wc_get_products( array( 'include' => $s['products'], 'status' => 'publish', 'limit' => -1, 'return' => 'ids' ) );
+			$live = array_flip( $live );
+			$ids  = array();
+			foreach ( $s['products'] as $id ) {
+				if ( isset( $live[ $id ] ) ) {
+					$ids[] = (int) $id;
+				}
+			}
+			return $ids;
+		}
+
+		// Category source. No category chosen yet → newest products as well.
+		$term = get_term( $s['category'], 'product_cat' );
+		if ( ! $term || is_wp_error( $term ) ) {
+			return array_map( 'intval', wc_get_products( $newest ) );
+		}
+		return array_map(
+			'intval',
+			wc_get_products(
+				array(
+					'status'   => 'publish',
+					'limit'    => $limit,
+					'orderby'  => 'menu_order title',
+					'order'    => 'ASC',
+					'return'   => 'ids',
+					'category' => array( $term->slug ),
+				)
+			)
+		);
+	}
+
+	/**
+	 * Product cards in the storefront's own `Product` shape (the fast "list"
+	 * variant its woocommerce-products function produces), in the given order.
+	 * Shipping them here means a rail is one request and never depends on the
+	 * Supabase function knowing about ID ordering.
+	 */
+	private static function product_cards( $ids ) {
+		if ( empty( $ids ) ) {
+			return array();
+		}
+		$products = wc_get_products( array( 'include' => $ids, 'status' => 'publish', 'limit' => -1 ) );
+		$by_id    = array();
+		foreach ( $products as $p ) {
+			$by_id[ $p->get_id() ] = $p;
+		}
+		$cards = array();
+		foreach ( $ids as $id ) {
+			if ( isset( $by_id[ $id ] ) ) {
+				$cards[] = self::product_card( $by_id[ $id ] );
+			}
+		}
+		return $cards;
+	}
+
+	private static function product_card( WC_Product $p ) {
+		$images = array();
+		foreach ( array_merge( array( $p->get_image_id() ), $p->get_gallery_image_ids() ) as $img_id ) {
+			$url = $img_id ? wp_get_attachment_image_url( $img_id, 'full' ) : '';
+			if ( $url ) {
+				$images[] = $url;
+			}
+		}
+
+		$colors = array();
+		$sizes  = array();
+		foreach ( $p->get_attributes() as $attr ) {
+			$label = strtolower( wc_attribute_label( $attr->get_name(), $p ) );
+			if ( $attr->is_taxonomy() ) {
+				$terms = $attr->get_terms();
+				$opts  = $terms ? wp_list_pluck( $terms, 'name' ) : array();
+			} else {
+				$opts = $attr->get_options();
+			}
+			if ( in_array( $label, array( 'color', 'colour' ), true ) ) {
+				$colors = array_values( $opts );
+			} elseif ( 'size' === $label ) {
+				$sizes = array_values( $opts );
+			}
+		}
+
+		$cat_ids = $p->get_category_ids();
+		$cat     = ! empty( $cat_ids ) ? get_term( $cat_ids[0], 'product_cat' ) : null;
+		$cat     = ( $cat && ! is_wp_error( $cat ) ) ? $cat : null;
+
+		$price   = (float) $p->get_price();
+		$regular = (float) $p->get_regular_price();
+		$on_sale = $p->is_on_sale() && $regular > 0;
+
+		return array(
+			'id'               => (string) $p->get_id(),
+			'name'             => $p->get_name(),
+			'slug'             => $p->get_slug(),
+			'price'            => $price,
+			'originalPrice'    => $regular > 0 ? $regular : null,
+			'discount'         => $on_sale ? (int) round( ( $regular - $price ) / $regular * 100 ) : null,
+			'images'           => $images,
+			'colors'           => $colors,
+			'sizes'            => $sizes,
+			'category'         => $cat ? $cat->name : 'Uncategorized',
+			'categorySlug'     => $cat ? $cat->slug : 'uncategorized',
+			'categoryId'       => $cat ? (string) $cat->term_id : '',
+			'isNew'            => $p->is_featured(),
+			'isSoldOut'        => 'outofstock' === $p->get_stock_status(),
+			'inStock'          => 'instock' === $p->get_stock_status(),
+			'stockQuantity'    => $p->get_stock_quantity(),
+			'description'      => $p->get_description(),
+			'shortDescription' => $p->get_short_description(),
+			'sku'              => $p->get_sku(),
+			'type'             => $p->get_type(),
+			'averageRating'    => $p->get_average_rating(),
+			'ratingCount'      => $p->get_rating_count(),
+		);
+	}
+
+	private static function resolve_view_all( $s ) {
+		if ( ! empty( $s['view_all'] ) ) {
+			return $s['view_all'];
+		}
+		if ( 'category' === $s['source'] ) {
+			$term = get_term( $s['category'], 'product_cat' );
+			if ( $term && ! is_wp_error( $term ) ) {
+				return '/collections/' . $term->slug;
+			}
+		}
+		return '';
+	}
+}
+
+Kayals_Homepage::init();

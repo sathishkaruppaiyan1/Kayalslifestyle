@@ -11,15 +11,24 @@ import ProductCarousel from "@/components/home/ProductCarousel";
 import StorySection from "@/components/home/StorySection";
 import ReviewsSlider from "@/components/home/ReviewsSlider";
 import { useWooCommerceProducts, useWooCommerceCategories } from "@/hooks/useWooCommerce";
+import { useHomepage } from "@/hooks/useHomepage";
+import DynamicHomepage from "@/components/home/DynamicHomepage";
 import { Skeleton } from "@/components/ui/skeleton";
 import { preloadImages, getProductCardImage } from "@/lib/imageOptimizer";
 
 const Index = () => {
+  // Layout from the WordPress "Homepage Builder" plugin. `undefined` while
+  // loading, `null` when the plugin isn't there — only then do the legacy
+  // hard-wired sections below fetch anything.
+  const { data: homepage } = useHomepage();
+  const useLegacy = homepage === null;
+
   // New Arrivals - products tagged "new-arrivals" in WooCommerce
   const { data: newArrivalsData, isLoading: newArrivalsLoading, error: newArrivalsError } = useWooCommerceProducts({
     perPage: 8,
     tag: 'new-arrivals',
     skipVariations: true,
+    enabled: useLegacy,
   });
 
   // Hot Sellers - products tagged "hot-sellers" in WooCommerce
@@ -27,6 +36,7 @@ const Index = () => {
     perPage: 8,
     tag: 'hot-sellers',
     skipVariations: true,
+    enabled: useLegacy,
   });
 
   const { data: categories } = useWooCommerceCategories();
@@ -52,14 +62,14 @@ const Index = () => {
     category: bestSellersId,
     perPage: 12,
     skipVariations: true,
-    enabled: !!bestSellersId,
+    enabled: useLegacy && !!bestSellersId,
   });
 
   const { data: trendingData, isLoading: trendingLoading } = useWooCommerceProducts({
     category: trendingCollectionId,
     perPage: 12,
     skipVariations: true,
-    enabled: !!trendingCollectionId,
+    enabled: useLegacy && !!trendingCollectionId,
   });
 
   const newArrivals = newArrivalsData?.products || [];
@@ -82,6 +92,34 @@ const Index = () => {
       }
     }
   }, [newArrivals]);
+
+  // Plugin-driven homepage: sections in admin order, brand story always last.
+  if (homepage && homepage.sections.length > 0) {
+    return (
+      <Layout>
+        <DynamicHomepage sections={homepage.sections} />
+        <Reveal>
+          <StorySection />
+        </Reveal>
+      </Layout>
+    );
+  }
+
+  // Still finding out whether the plugin is installed — hold the fold steady.
+  if (homepage === undefined) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 pt-5 pb-6">
+          <div className="flex gap-3 md:gap-5 overflow-hidden">
+            {[...Array(8)].map((_, i) => (
+              <Skeleton key={i} className="h-24 w-24 shrink-0 rounded-t-full" />
+            ))}
+          </div>
+        </div>
+        <div className="w-full aspect-[16/7] md:aspect-[16/5] bg-muted animate-pulse" />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

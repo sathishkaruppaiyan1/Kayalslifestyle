@@ -22,6 +22,7 @@ interface ProductsParams {
   skipVariations?: boolean; // Skip variation processing for faster list views
   enabled?: boolean; // Whether to enable the query
   status?: string; // Filter by product status (publish, draft, etc.)
+  include?: string; // Comma-separated product IDs; results come back in this order
 }
 
 export interface Review {
@@ -85,10 +86,10 @@ export interface CreateOrderData {
 }
 
 export const useWooCommerceProducts = (params: ProductsParams = {}) => {
-  const { category, perPage = 20, page = 1, search, tag, skipVariations = false, enabled = true, status = 'publish' } = params;
+  const { category, perPage = 20, page = 1, search, tag, skipVariations = false, enabled = true, status = 'publish', include } = params;
 
   return useQuery({
-    queryKey: ["woocommerce-products", category, perPage, page, search, tag, skipVariations, status],
+    queryKey: ["woocommerce-products", category, perPage, page, search, tag, skipVariations, status, include],
     enabled,
     queryFn: async (): Promise<ProductsResponse> => {
       const queryParams = new URLSearchParams();
@@ -97,6 +98,7 @@ export const useWooCommerceProducts = (params: ProductsParams = {}) => {
       queryParams.set("page", page.toString());
       if (search) queryParams.set("search", search);
       if (tag) queryParams.set("tag", tag);
+      if (include) queryParams.set("include", include);
       if (skipVariations) queryParams.set("skip_variations", "true"); // Skip variations for faster loading
       if (status) queryParams.set("status", status);
 

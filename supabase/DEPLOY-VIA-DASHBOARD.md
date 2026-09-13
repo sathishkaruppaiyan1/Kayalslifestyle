@@ -150,19 +150,37 @@ Event `payment.captured`, secret = your `RAZORPAY_WEBHOOK_SECRET`.
 
 Secrets: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`.
 
-### Easebuzz
+### Cashfree
 
-| # | Name | Lines | Verify JWT | Notes |
-| --- | --- | --- | --- | --- |
-| 15 | `initiate-easebuzz-payment` | 127 | **off** | |
-| 16 | `verify-easebuzz-payment` | 220 | **off** | |
-| 17 | `interakt-order-notification` | 109 | **on** (default) | **required** — `verify-easebuzz-payment` calls it server-side |
+These three are **self-contained** — paste each `index.ts` as-is, no extra
+files needed (the shared helpers are inlined at the top of each file).
 
-Secrets: `EASEBUZZ_KEY`, `EASEBUZZ_SALT`, `EASEBUZZ_ENV` (`test` or `prod`),
-plus `INTERAKT_API_KEY` for #17.
+| # | Name | Verify JWT | Notes |
+| --- | --- | --- | --- |
+| 15 | `create-cashfree-order` | **off** | creates the Cashfree order, returns `payment_session_id` |
+| 16 | `verify-cashfree-payment` | **off** | asks Cashfree whether the order is PAID, then marks the WooCommerce order paid |
+| 17 | `cashfree-webhook` | **OFF — required** | Cashfree posts here with only an HMAC header; the function verifies it |
 
-> #17 is easy to miss: nothing in the frontend calls it, but Easebuzz order
-> confirmation silently fails without it.
+Secrets: `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV` (`sandbox` or
+`production`). The WhatsApp confirmation reuses `WHATSAPP_*` from Step 3. Get the App ID / Secret from
+Cashfree dashboard → **Developers → API Keys** (there are separate test and
+production keys — `CASHFREE_ENV` must match the pair you paste).
+
+Then in the Cashfree dashboard → **Developers → Webhooks → Payment Gateway**
+add:
+
+```
+https://rzeopubfxaytrrnbthhm.supabase.co/functions/v1/cashfree-webhook
+```
+
+and enable the **Payment Success** event. The webhook is the safety net for a
+shopper whose browser closes after paying — without it that order stays
+"pending" in WooCommerce.
+
+WooCommerce side: install the official **Cashfree Payments** plugin (WooCommerce
+→ Settings → Payments) and enable it — the storefront lists the gateway from
+there and picks it by its id `cashfree`. The plugin's own keys are not used by
+the storefront; it only needs to be enabled so the option appears.
 
 ---
 
@@ -176,11 +194,6 @@ Everything below is optional — nothing in the app calls it.
 | `whatsapp-account-creation` | never invoked |
 | `whatsapp-tracking-update` | never invoked |
 | `whatsapp-send-review` | never invoked |
-| `interakt-send-otp` | alternative WhatsApp provider; app uses the Meta pair |
-| `interakt-verify-otp` | as above |
-| `interakt-account-creation` | as above |
-| `interakt-send-review` | as above |
-| `interakt-tracking-update` | as above |
 
 ---
 
@@ -194,8 +207,7 @@ for f in pincode-lookup woocommerce-products woocommerce-categories home-banners
          woocommerce-reviews woocommerce-orders woocommerce-pages \
          woocommerce-payment-gateways whatsapp-send-otp whatsapp-verify-otp \
          whatsapp-order-notification create-razorpay-order verify-razorpay-payment \
-         razorpay-webhook initiate-easebuzz-payment verify-easebuzz-payment \
-         interakt-order-notification; do
+         razorpay-webhook create-cashfree-order verify-cashfree-payment cashfree-webhook; do
   printf "%-32s %s\n" "$f" \
     "$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$URL/functions/v1/$f" \
         -H "apikey: $KEY" -H "Authorization: Bearer $KEY")"

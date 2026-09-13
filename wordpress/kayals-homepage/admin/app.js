@@ -1,0 +1,726 @@
+/* global KayalsHP, jQuery, wp */
+/**
+ * Homepage Builder admin.
+ *
+ * One state object (`state`) mirrors the saved option. Text inputs write into
+ * state directly on input; anything structural (add / remove / reorder /
+ * change section type) re-renders the whole list. Nothing here needs a build
+ * step — it's plain DOM + the jQuery UI sortable WordPress already ships.
+ */
+(function ($) {
+  'use strict';
+
+  var state = KayalsHP.data || { topbar: { enabled: true, items: [] }, sections: [] };
+  state.topbar = state.topbar || { enabled: true, items: [] };
+  var productMeta = {}; // id -> {name, image, price, status} for manual rails
+  var dirty = false;
+
+  var TYPE_LABELS = {
+    category_strip: 'Category Strip (top scroller)',
+    hero: 'Hero Banners',
+    reels: 'Shop by Reels',
+    products: 'Product Rail',
+    category_tabs: 'Browse by Category',
+    reviews: 'Customer Reviews (images)',
+  };
+
+  var TYPE_HELP = {
+    category_strip: 'Circular category bubbles above the hero. Leave the list empty to show every top-level category.',
+    hero: 'Full-width slides. Each slide takes TWO images: a wide one for desktop/tablet and a taller (portrait) one for phones. Leave the phone image empty and the wide image is used on phones too.',
+    reels: 'Portrait cards linking to Instagram reels, each with a SHOP NOW destination.',
+    products: 'A row of products. Pick them by hand and drag to order — leave the list empty and it shows the newest products automatically. Or point it at a category. Rename it to anything: Hot Sellers, Featured Picks, Wedding Edit…',
+    category_tabs: 'Tabbed rail — one tab per category, showing that category\'s products. Leave the list empty to show every category.',
+    reviews: 'Screenshots or photos of customer reviews. Add as many as you like.',
+  };
+
+  /* ---------------------------------------------------------------- */
+  /* helpers                                                           */
+  /* ---------------------------------------------------------------- */
+
+  function uid() {
+    return 's' + Math.random().toString(36).slice(2, 10);
+  }
+
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (k) {
+        if (k === 'class') node.className = attrs[k];
+        else if (k === 'text') node.textContent = attrs[k];
+        else if (k === 'html') node.innerHTML = attrs[k];
+        else if (k.indexOf('on') === 0) node.addEventListener(k.slice(2), attrs[k]);
+        else if (attrs[k] !== null && attrs[k] !== undefined) node.setAttribute(k, attrs[k]);
+      });
+    }
+    (children || []).forEach(function (c) {
+      if (c === null || c === undefined) return;
+      node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    });
+    return node;
+  }
+
+  function markDirty() {
+    dirty = true;
+    var btn = document.getElementById('hp-save');
+    if (btn) btn.classList.add('is-dirty');
+    var note = document.getElementById('hp-unsaved');
+    if (note) note.hidden = false;
+  }
+
+  function textField(label, obj, key, opts) {
+    opts = opts || {};
+    var input = el('input', {
+      type: opts.type || 'text',
+      class: 'regular-text',
+      value: obj[key] == null ? '' : obj[key],
+      placeholder: opts.placeholder || '',
+      oninput: function () {
+        obj[key] = opts.type === 'number' ? parseInt(this.value, 10) || 0 : this.value;
+        markDirty();
+      },
+    });
+    if (opts.min) input.min = opts.min;
+    if (opts.max) input.max = opts.max;
+    return el('label', { class: 'hp-field' }, [el('span', { text: label }), input]);
+  }
+
+  function selectField(label, obj, key, options, onChange) {
+    var select = el('select', {
+      onchange: function () {
+        obj[key] = isNaN(this.value) ? this.value : parseInt(this.value, 10);
+        markDirty();
+        if (onChange) onChange();
+      },
+    });
+    options.forEach(function (o) {
+      var opt = el('option', { value: o.value, text: o.label });
+      if (String(o.value) === String(obj[key])) opt.selected = true;
+      select.appendChild(opt);
+    });
+    return el('label', { class: 'hp-field' }, [el('span', { text: label }), select]);
+  }
+
+  function pickImage(opts, cb) {
+    var frame = wp.media({
+      title: opts.title || 'Choose image',
+      button: { text: 'Use this image' },
+      multiple: !!opts.multiple,
+      library: { type: 'image' },
+    });
+    frame.on('select', function () {
+      var selection = frame.state().get('selection').toJSON();
+      cb(
+        selection.map(function (a) {
+          var sizes = a.sizes || {};
+          return (sizes.large && sizes.large.url) || a.url;
+        })
+      );
+    });
+    frame.open();
+  }
+
+  function imageField(label, obj, key, opts) {
+    var preview = el('img', { class: 'hp-thumb', src: obj[key] || '' });
+    preview.hidden = !obj[key];
+    var button = el('button', {
+      type: 'button',
+      class: 'button',
+      text: obj[key] ? 'Change' : 'Choose image',
+      onclick: function () {
+        pickImage({ title: label }, function (urls) {
+          obj[key] = urls[0];
+          preview.src = urls[0];
+          preview.hidden = false;
+          button.textContent = 'Change';
+          clear.hidden = false;
+          markDirty();
+        });
+      },
+    });
+    var clear = el('button', {
+      type: 'button',
+      class: 'button-link hp-clear',
+      text: 'Remove',
+      onclick: function () {
+        obj[key] = '';
+        preview.hidden = true;
+        button.textContent = 'Choose image';
+        clear.hidden = true;
+        markDirty();
+      },
+    });
+    clear.hidden = !obj[key];
+    return el('div', { class: 'hp-field hp-image-field' + (opts && opts.portrait ? ' is-portrait' : '') }, [
+      el('span', { text: label }),
+      el('div', { class: 'hp-image-controls' }, [preview, button, clear]),
+    ]);
+  }
+
+  /** Sortable list of item rows; `renderRow(item, index)` returns the row's body. */
+  function itemList(sec, renderRow, opts) {
+    var list = el('div', { class: 'hp-items' });
+    sec.items = sec.items || [];
+    sec.items.forEach(function (item, index) {
+      var row = el('div', { class: 'hp-item', 'data-index': index }, [
+        el('span', { class: 'hp-drag dashicons dashicons-move', title: 'Drag to reorder' }),
+        el('div', { class: 'hp-item-body' }, [renderRow(item, index)]),
+        el('button', {
+          type: 'button',
+          class: 'button-link hp-remove dashicons dashicons-no-alt',
+          title: 'Remove',
+          onclick: function () {
+            sec.items.splice(index, 1);
+            markDirty();
+            render();
+          },
+        }),
+      ]);
+      list.appendChild(row);
+    });
+    if (sec.items.length === 0 && opts && opts.emptyText) {
+      list.appendChild(el('p', { class: 'description hp-empty', text: opts.emptyText }));
+    }
+    $(list).sortable({
+      handle: '.hp-drag',
+      items: '.hp-item',
+      axis: 'y',
+      update: function () {
+        var order = $(list)
+          .children('.hp-item')
+          .map(function () {
+            return parseInt(this.getAttribute('data-index'), 10);
+          })
+          .get();
+        sec.items = order.map(function (i) {
+          return sec.items[i];
+        });
+        markDirty();
+        render();
+      },
+    });
+    return list;
+  }
+
+  function termOptions(terms, placeholder) {
+    var opts = [{ value: 0, label: placeholder }];
+    terms.forEach(function (t) {
+      opts.push({ value: t.id, label: t.name + ' (' + t.count + ')' });
+    });
+    return opts;
+  }
+
+  function categoryById(id) {
+    return KayalsHP.categories.filter(function (c) {
+      return c.id === id;
+    })[0];
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* section bodies                                                    */
+  /* ---------------------------------------------------------------- */
+
+  function bodyCategories(sec) {
+    var list = itemList(
+      sec,
+      function (id) {
+        var cat = categoryById(id);
+        return el('span', { class: 'hp-item-title', text: cat ? cat.name : 'Category #' + id + ' (deleted)' });
+      },
+      { emptyText: 'No categories chosen — every top-level category will be shown in WooCommerce order.' }
+    );
+    var add = el('select', { class: 'hp-add-select' });
+    add.appendChild(el('option', { value: '', text: '+ Add category…' }));
+    KayalsHP.categories.forEach(function (c) {
+      if (sec.items.indexOf(c.id) !== -1) return;
+      add.appendChild(el('option', { value: c.id, text: (c.parent ? '— ' : '') + c.name + ' (' + c.count + ')' }));
+    });
+    add.addEventListener('change', function () {
+      if (!this.value) return;
+      sec.items.push(parseInt(this.value, 10));
+      markDirty();
+      render();
+    });
+    return el('div', {}, [list, add]);
+  }
+
+  function bodyHero(sec) {
+    var list = itemList(
+      sec,
+      function (item) {
+        return el('div', { class: 'hp-grid' }, [
+          imageField('Desktop / tablet image (wide, e.g. 1920×700)', item, 'image'),
+          imageField('Phone image (portrait, e.g. 800×1000)', item, 'mobile_image', { portrait: true }),
+          textField('Link (e.g. /collections/sarees)', item, 'link', { placeholder: '/collections/all' }),
+          textField('Alt text', item, 'alt'),
+        ]);
+      },
+      { emptyText: 'No banners yet. Without any, the storefront shows its built-in hero image.' }
+    );
+    var add = el('button', {
+      type: 'button',
+      class: 'button',
+      text: '+ Add banner',
+      onclick: function () {
+        pickImage({ title: 'Choose banner image' }, function (urls) {
+          sec.items.push({ image: urls[0], mobile_image: '', link: '/collections/all', alt: '' });
+          markDirty();
+          render();
+        });
+      },
+    });
+    return el('div', {}, [list, add]);
+  }
+
+  function bodyReels(sec) {
+    var list = itemList(
+      sec,
+      function (item) {
+        return el('div', { class: 'hp-grid' }, [
+          imageField('Poster (9:16)', item, 'thumb', { portrait: true }),
+          textField('Caption', item, 'title'),
+          textField('Instagram reel URL', item, 'href', { placeholder: 'https://www.instagram.com/reel/…' }),
+          textField('SHOP NOW goes to', item, 'shop', { placeholder: '/product/123 or /collections/slug' }),
+          textField('Video .mp4 URL (optional)', item, 'video'),
+        ]);
+      },
+      { emptyText: 'No reels yet — the section is hidden on the storefront until you add one.' }
+    );
+    var add = el('button', {
+      type: 'button',
+      class: 'button',
+      text: '+ Add reel',
+      onclick: function () {
+        pickImage({ title: 'Choose reel poster' }, function (urls) {
+          sec.items.push({ title: '', thumb: urls[0], href: '', shop: '', video: '' });
+          markDirty();
+          render();
+        });
+      },
+    });
+    return el('div', {}, [list, add]);
+  }
+
+  function bodyReviews(sec) {
+    var list = itemList(
+      sec,
+      function (item) {
+        return el('div', { class: 'hp-grid' }, [
+          imageField('Review image', item, 'image', { portrait: true }),
+          textField('Caption (optional)', item, 'caption'),
+        ]);
+      },
+      { emptyText: 'No review images yet — the section is hidden until you add one.' }
+    );
+    var add = el('button', {
+      type: 'button',
+      class: 'button',
+      text: '+ Add review images',
+      onclick: function () {
+        pickImage({ title: 'Choose review images', multiple: true }, function (urls) {
+          urls.forEach(function (u) {
+            sec.items.push({ image: u, caption: '' });
+          });
+          markDirty();
+          render();
+        });
+      },
+    });
+    return el('div', {}, [list, add]);
+  }
+
+  function bodyProducts(sec) {
+    sec.products = sec.products || [];
+    var wrap = el('div', {});
+
+    var settings = el('div', { class: 'hp-grid' }, [
+      textField('Emoji (optional)', sec, 'emoji', { placeholder: '⚡' }),
+      selectField('Layout', sec, 'layout', [
+        { value: 'grid', label: 'Grid (like Hot Sellers)' },
+        { value: 'carousel', label: 'Carousel (like Featured Picks)' },
+      ]),
+      selectField(
+        'Products come from',
+        sec,
+        'source',
+        [
+          { value: 'manual', label: 'Hand-picked (empty = newest products)' },
+          { value: 'category', label: 'A category' },
+        ],
+        render
+      ),
+      textField('How many to show (automatic lists only)', sec, 'limit', { type: 'number', min: 1, max: 48 }),
+      textField('"View all" link (optional)', sec, 'view_all', { placeholder: '/collections/slug' }),
+    ]);
+    wrap.appendChild(settings);
+
+    if (sec.source === 'category') {
+      wrap.appendChild(selectField('Category', sec, 'category', termOptions(KayalsHP.categories, '— choose —')));
+      wrap.appendChild(el('p', { class: 'description', text: 'Order follows the category\'s product order in WooCommerce (Products → Sorting).' }));
+    } else {
+      wrap.appendChild(manualPicker(sec));
+    }
+    return wrap;
+  }
+
+  function manualPicker(sec) {
+    var wrap = el('div', { class: 'hp-picker' });
+
+    // chosen list
+    var list = el('div', { class: 'hp-items' });
+    sec.products.forEach(function (id, index) {
+      var meta = productMeta[id];
+      var row = el('div', { class: 'hp-item hp-product', 'data-id': id }, [
+        el('span', { class: 'hp-drag dashicons dashicons-move' }),
+        meta && meta.image ? el('img', { class: 'hp-product-thumb', src: meta.image }) : el('span', { class: 'hp-product-thumb is-empty' }),
+        el('span', { class: 'hp-item-title' }, [
+          meta ? meta.name : 'Product #' + id,
+          meta && meta.status !== 'publish' ? el('em', { class: 'hp-warn', text: ' (' + meta.status + ' — hidden on storefront)' }) : null,
+        ]),
+        meta ? el('span', { class: 'hp-price', text: meta.price }) : null,
+        el('button', {
+          type: 'button',
+          class: 'button-link hp-remove dashicons dashicons-no-alt',
+          onclick: function () {
+            sec.products.splice(index, 1);
+            markDirty();
+            render();
+          },
+        }),
+      ]);
+      list.appendChild(row);
+    });
+    if (sec.products.length === 0) {
+      list.appendChild(el('p', { class: 'description hp-empty', text: 'Nothing picked — showing the newest products automatically. Search below to curate this rail.' }));
+    }
+    $(list).sortable({
+      handle: '.hp-drag',
+      items: '.hp-item',
+      axis: 'y',
+      update: function () {
+        sec.products = $(list)
+          .children('.hp-item')
+          .map(function () {
+            return parseInt(this.getAttribute('data-id'), 10);
+          })
+          .get();
+        markDirty();
+      },
+    });
+    wrap.appendChild(list);
+
+    // search
+    var results = el('div', { class: 'hp-results' });
+    results.hidden = true;
+    var timer = null;
+    var search = el('input', {
+      type: 'search',
+      class: 'regular-text',
+      placeholder: 'Search products to add…',
+      oninput: function () {
+        var q = this.value.trim();
+        clearTimeout(timer);
+        if (q.length < 2) {
+          results.hidden = true;
+          return;
+        }
+        timer = setTimeout(function () {
+          $.getJSON(KayalsHP.ajaxUrl, { action: 'kayals_hp_search_products', nonce: KayalsHP.nonce, q: q }, function (res) {
+            results.innerHTML = '';
+            var items = (res && res.data) || [];
+            if (items.length === 0) {
+              results.appendChild(el('p', { class: 'description', text: 'No products match.' }));
+            }
+            items.forEach(function (p) {
+              productMeta[p.id] = p;
+              var already = sec.products.indexOf(p.id) !== -1;
+              results.appendChild(
+                el('button', {
+                  type: 'button',
+                  class: 'hp-result' + (already ? ' is-added' : ''),
+                  disabled: already ? 'disabled' : null,
+                  onclick: function () {
+                    sec.products.push(p.id);
+                    markDirty();
+                    render();
+                  },
+                }, [
+                  p.image ? el('img', { src: p.image }) : el('span', { class: 'hp-product-thumb is-empty' }),
+                  el('span', { text: p.name }),
+                  el('span', { class: 'hp-price', text: already ? 'Added' : p.price }),
+                ])
+              );
+            });
+            results.hidden = false;
+          });
+        }, 250);
+      },
+    });
+    wrap.appendChild(el('div', { class: 'hp-search' }, [search, results]));
+    return wrap;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* section shell + render                                            */
+  /* ---------------------------------------------------------------- */
+
+  var BODIES = {
+    category_strip: bodyCategories,
+    category_tabs: bodyCategories,
+    hero: bodyHero,
+    reels: bodyReels,
+    reviews: bodyReviews,
+    products: bodyProducts,
+  };
+
+  var collapsed = {};
+
+  function renderSection(sec, index) {
+    var isOpen = !collapsed[sec.id];
+
+    var enabled = el('input', {
+      type: 'checkbox',
+      onchange: function () {
+        sec.enabled = this.checked;
+        card.classList.toggle('is-disabled', !sec.enabled);
+        markDirty();
+      },
+    });
+    enabled.checked = !!sec.enabled;
+
+    var title = el('input', {
+      type: 'text',
+      class: 'hp-title',
+      value: sec.title || '',
+      placeholder: sec.type === 'hero' || sec.type === 'category_strip' ? '(no heading)' : 'Section heading',
+      oninput: function () {
+        sec.title = this.value;
+        markDirty();
+      },
+    });
+
+    var card = el('div', { class: 'hp-section' + (sec.enabled ? '' : ' is-disabled') + (isOpen ? ' is-open' : ''), 'data-id': sec.id }, [
+      el('div', { class: 'hp-section-head' }, [
+        el('span', { class: 'hp-drag dashicons dashicons-move', title: 'Drag to reorder' }),
+        el('span', { class: 'hp-type', text: TYPE_LABELS[sec.type] }),
+        title,
+        el('label', { class: 'hp-toggle' }, [enabled, ' Show']),
+        el('button', {
+          type: 'button',
+          class: 'button-link dashicons ' + (isOpen ? 'dashicons-arrow-up-alt2' : 'dashicons-arrow-down-alt2'),
+          title: isOpen ? 'Collapse' : 'Expand',
+          onclick: function () {
+            collapsed[sec.id] = isOpen;
+            render();
+          },
+        }),
+        el('button', {
+          type: 'button',
+          class: 'button-link hp-delete dashicons dashicons-trash',
+          title: 'Delete section',
+          onclick: function () {
+            if (!window.confirm('Delete "' + (sec.title || TYPE_LABELS[sec.type]) + '"?')) return;
+            state.sections.splice(index, 1);
+            markDirty();
+            render();
+          },
+        }),
+      ]),
+      isOpen
+        ? el('div', { class: 'hp-section-body' }, [
+            el('p', { class: 'description', text: TYPE_HELP[sec.type] }),
+            BODIES[sec.type](sec),
+          ])
+        : null,
+    ]);
+    return card;
+  }
+
+  /** The announcement strip above the header — global, so it sits apart from the section list. */
+  function renderTopbar() {
+    var tb = state.topbar;
+    tb.items = tb.items || [];
+
+    var enabled = el('input', {
+      type: 'checkbox',
+      onchange: function () {
+        tb.enabled = this.checked;
+        card.classList.toggle('is-disabled', !tb.enabled);
+        markDirty();
+      },
+    });
+    enabled.checked = !!tb.enabled;
+
+    var list = itemList(
+      tb,
+      function (item) {
+        var row = el('div', { class: 'hp-grid hp-topbar-row' });
+        row.appendChild(
+          selectField('Kind', item, 'type', [
+            { value: 'text', label: 'Message' },
+            { value: 'whatsapp', label: 'WhatsApp number' },
+          ], render)
+        );
+        row.appendChild(textField(item.type === 'whatsapp' ? 'Label before the number' : 'Message', item, 'text', { placeholder: 'Free Shipping in India' }));
+        if (item.type === 'whatsapp') {
+          row.appendChild(textField('Phone (with country code)', item, 'phone', { placeholder: '+91 8220027625' }));
+        } else {
+          row.appendChild(textField('Link (optional)', item, 'link', { placeholder: '/collections/all' }));
+        }
+        return row;
+      },
+      { emptyText: 'No messages — the bar is hidden on the storefront.' }
+    );
+
+    var add = el('button', {
+      type: 'button',
+      class: 'button',
+      text: '+ Add message',
+      onclick: function () {
+        tb.items.push({ type: 'text', text: '', phone: '', link: '' });
+        markDirty();
+        render();
+      },
+    });
+
+    var card = el('div', { class: 'hp-section hp-topbar is-open' + (tb.enabled ? '' : ' is-disabled') }, [
+      el('div', { class: 'hp-section-head' }, [
+        el('span', { class: 'hp-type', text: 'Top Bar' }),
+        el('strong', { class: 'hp-title-static', text: 'Announcement bar (scrolling strip above the header)' }),
+        el('label', { class: 'hp-toggle' }, [enabled, ' Show']),
+      ]),
+      el('div', { class: 'hp-section-body' }, [
+        el('p', { class: 'description', text: 'Shown on every page. Messages scroll left to right, separated by a divider.' }),
+        list,
+        add,
+      ]),
+    ]);
+    return card;
+  }
+
+  function render() {
+    var root = document.getElementById('kayals-hp-app');
+    root.innerHTML = '';
+
+    root.appendChild(el('h2', { class: 'hp-heading', text: 'Top bar' }));
+    root.appendChild(renderTopbar());
+    root.appendChild(el('h2', { class: 'hp-heading', text: 'Homepage sections' }));
+
+    var list = el('div', { id: 'hp-sections' });
+    state.sections.forEach(function (sec, i) {
+      list.appendChild(renderSection(sec, i));
+    });
+    root.appendChild(list);
+
+    $(list).sortable({
+      handle: '.hp-section-head .hp-drag',
+      items: '.hp-section',
+      axis: 'y',
+      placeholder: 'hp-section-placeholder',
+      update: function () {
+        var order = $(list)
+          .children('.hp-section')
+          .map(function () {
+            return this.getAttribute('data-id');
+          })
+          .get();
+        state.sections.sort(function (a, b) {
+          return order.indexOf(a.id) - order.indexOf(b.id);
+        });
+        markDirty();
+      },
+    });
+
+    // add section
+    var addSelect = el('select', {});
+    addSelect.appendChild(el('option', { value: '', text: '+ Add a section…' }));
+    Object.keys(TYPE_LABELS).forEach(function (t) {
+      addSelect.appendChild(el('option', { value: t, text: TYPE_LABELS[t] }));
+    });
+    addSelect.addEventListener('change', function () {
+      var type = this.value;
+      if (!type) return;
+      var sec = { id: uid(), type: type, enabled: true, title: '', items: [] };
+      if (type === 'products') {
+        Object.assign(sec, { emoji: '', layout: 'grid', source: 'manual', category: 0, limit: 8, products: [], view_all: '' });
+        sec.title = 'New Section';
+      } else if (type === 'reels') sec.title = 'Shop by Reels';
+      else if (type === 'category_tabs') sec.title = 'Browse by Category';
+      else if (type === 'reviews') sec.title = 'What Our Customers Say';
+      state.sections.push(sec);
+      markDirty();
+      render();
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    var save = el('button', {
+      id: 'hp-save',
+      type: 'button',
+      class: 'button button-primary button-hero' + (dirty ? ' is-dirty' : ''),
+      text: 'Save homepage',
+      onclick: saveState,
+    });
+    var unsaved = el('span', { id: 'hp-unsaved', class: 'hp-unsaved', text: 'Unsaved changes' });
+    unsaved.hidden = !dirty;
+    var status = el('span', { id: 'hp-status', class: 'hp-status' });
+
+    root.appendChild(el('div', { class: 'hp-footer' }, [addSelect, save, unsaved, status]));
+    root.appendChild(
+      el('p', { class: 'description hp-endpoint' }, [
+        'Storefront reads: ',
+        el('a', { href: KayalsHP.restUrl, target: '_blank', text: KayalsHP.restUrl }),
+      ])
+    );
+  }
+
+  function saveState() {
+    var status = document.getElementById('hp-status');
+    status.textContent = 'Saving…';
+    $.post(
+      KayalsHP.ajaxUrl,
+      { action: 'kayals_hp_save', nonce: KayalsHP.nonce, config: JSON.stringify(state) },
+      function (res) {
+        if (res && res.success) {
+          state = res.data;
+          dirty = false;
+          render();
+          document.getElementById('hp-status').textContent = 'Saved ✓ — live on the storefront.';
+        } else {
+          status.textContent = 'Save failed: ' + ((res && res.data) || 'unknown error');
+        }
+      }
+    ).fail(function () {
+      status.textContent = 'Save failed — check your connection.';
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* boot: hydrate product names for manual rails, then render         */
+  /* ---------------------------------------------------------------- */
+
+  function boot() {
+    var ids = [];
+    state.sections.forEach(function (s) {
+      if (s.type === 'products' && s.products) ids = ids.concat(s.products);
+    });
+    if (ids.length === 0) {
+      render();
+      return;
+    }
+    $.getJSON(KayalsHP.ajaxUrl, { action: 'kayals_hp_products_by_ids', nonce: KayalsHP.nonce, ids: ids.join(',') })
+      .done(function (res) {
+        ((res && res.data) || []).forEach(function (p) {
+          productMeta[p.id] = p;
+        });
+      })
+      .always(render);
+  }
+
+  window.addEventListener('beforeunload', function (e) {
+    if (dirty) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  $(boot);
+})(jQuery);

@@ -4,8 +4,15 @@ import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { useHomeBanners } from "@/hooks/useWooCommerce";
 import type { HomeBanner } from "@/hooks/useWooCommerce";
 
-const HeroBanner = () => {
-  const { data: banners = [], isLoading } = useHomeBanners();
+interface HeroBannerProps {
+  /** Slides from the homepage builder; omit to load the legacy "home-banners" posts. */
+  banners?: HomeBanner[];
+}
+
+const HeroBanner = ({ banners: provided }: HeroBannerProps = {}) => {
+  const { data: fetched = [], isLoading: fetching } = useHomeBanners();
+  const banners = provided ?? fetched;
+  const isLoading = !provided && fetching;
   const [current, setCurrent] = useState(0);
 
   const goNext = useCallback(() => {
@@ -44,6 +51,8 @@ const HeroBanner = () => {
         <Link to="/collections/all">
           <ResponsiveBannerImage
             desktopSrc="/hero-banner.jpg"
+            mobileSrc="/Mobile.png"
+            tabletSrc="/Tab.png"
             alt="Tradition Meets Everyday You — sarees, lehengas, gowns and salwars"
           />
         </Link>
@@ -115,6 +124,7 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
   const image = (
     <ResponsiveBannerImage
       desktopSrc={banner.image_url}
+      mobileSrc={banner.mobile_image_url || undefined}
       alt={banner.alt_text || "Banner"}
     />
   );
@@ -130,16 +140,25 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
   return <Link to={banner.redirect_link}>{image}</Link>;
 };
 
+/**
+ * Phones (<768px) get `mobileSrc` when the banner has one; tablets and
+ * desktops get the wide image. Without a mobile image the wide one is used
+ * everywhere — never a stand-in that doesn't match the banner.
+ */
 const ResponsiveBannerImage = ({
   desktopSrc,
+  mobileSrc,
+  tabletSrc,
   alt,
 }: {
   desktopSrc: string;
+  mobileSrc?: string;
+  tabletSrc?: string;
   alt: string;
 }) => (
   <picture>
-    <source media="(max-width: 767px)" srcSet="/Mobile.png" />
-    <source media="(min-width: 768px) and (max-width: 1023px)" srcSet="/Tab.png" />
+    {mobileSrc && <source media="(max-width: 767px)" srcSet={mobileSrc} />}
+    {tabletSrc && <source media="(min-width: 768px) and (max-width: 1023px)" srcSet={tabletSrc} />}
     <img
       src={desktopSrc}
       alt={alt}

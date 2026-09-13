@@ -50,7 +50,7 @@ const ProductCarousel = ({
       <div className="container mx-auto px-4">
         {title && (
           <div className="relative mb-6 flex flex-col items-center justify-center lg:mb-8">
-            <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
+            <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
               <span className="flex items-center gap-2">
                 {title} {emoji && <span>{emoji}</span>}
               </span>

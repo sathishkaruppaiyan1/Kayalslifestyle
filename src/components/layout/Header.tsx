@@ -10,6 +10,8 @@ import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { X } from "@phosphor-icons/react";
 import WoodmartIcon from "@/components/ui/WoodmartIcon";
+import SearchModeButtons from "@/components/search/SearchModeButtons";
+import { isVoiceSearchSupported } from "@/hooks/useVoiceSearch";
 
 // Header icons — real glyphs from the reference site's icon font (kayalslifestyle.com).
 const AdornMenu = ({ size = 20 }: { size?: number }) => (
@@ -35,7 +37,8 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { totalItems: cartItems, setIsOpen: setCartOpen } = useCart();
   const { totalItems: wishlistItems } = useWishlist();
-  const { openSearch } = useSearch();
+  const { openSearch, openVoiceSearch, openPhotoSearch } = useSearch();
+  const voiceSupported = isVoiceSearchSupported();
   const { isAuthenticated, user, logout } = useAuth();
   const { data: categoriesData } = useWooCommerceCategories();
   const categories = categoriesData?.categories || [];
@@ -153,16 +156,20 @@ const Header = () => {
                 <Input
                   type="text"
                   placeholder="Search here for all products"
-                  className="w-full pl-4 pr-12 py-3 h-12 border-border rounded-full font-body text-sm cursor-pointer"
+                  className="w-full pl-4 pr-32 py-3 h-12 border-border rounded-full font-body text-sm cursor-pointer"
                   readOnly
                 />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10"
-                >
-                  <AdornSearch />
-                </Button>
+                {/* Voice / photo modes sit beside the search icon */}
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <SearchModeButtons
+                    onVoice={openVoiceSearch}
+                    onPhoto={openPhotoSearch}
+                    voiceSupported={voiceSupported}
+                  />
+                  <Button variant="ghost" size="icon" className="h-10 w-10">
+                    <AdornSearch />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -429,18 +436,25 @@ const Header = () => {
           <Input
             type="text"
             placeholder="Search here for all products"
-            className="w-full h-11 pl-4 pr-14 border border-border rounded-md cursor-pointer font-body text-sm"
+            className="w-full h-11 pl-4 pr-32 border border-border rounded-md cursor-pointer font-body text-sm"
             readOnly
           />
-          {/* Gold action button; the field itself stays a plain input. */}
-          <span
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 h-8 w-8 rounded-md
-                       bg-primary text-primary-foreground flex items-center justify-center
-                       transition-colors hover:bg-brand-ink"
-            aria-hidden="true"
-          >
-            <AdornSearch size={15} />
-          </span>
+          <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <SearchModeButtons
+              onVoice={openVoiceSearch}
+              onPhoto={openPhotoSearch}
+              voiceSupported={voiceSupported}
+              size={18}
+            />
+            {/* Gold action button; the field itself stays a plain input. */}
+            <span
+              className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center
+                         justify-center transition-colors hover:bg-brand-ink"
+              aria-hidden="true"
+            >
+              <AdornSearch size={15} />
+            </span>
+          </div>
         </div>
       </div>
     </>

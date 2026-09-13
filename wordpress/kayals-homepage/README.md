@@ -1,0 +1,42 @@
+# Kayals Homepage Builder (WordPress plugin)
+
+Lets you arrange the storefront homepage from WP admin — no code changes.
+
+Sections you can add, reorder (drag), rename, and switch on/off:
+
+| Section | What you control |
+| --- | --- |
+| **Top Bar** (every page) | the scrolling announcement messages above the header — plain text (optional link) or a WhatsApp number; drag order; on/off. Pre-filled with "Free Shipping in India", "15 to 20 Days Delivery Time" and the wholesale WhatsApp number |
+| **Category Strip** | which categories appear in the round scroller above the hero, and their order |
+| **Hero Banners** | slides — desktop image, optional mobile image, link, alt text |
+| **Shop by Reels** | poster image, Instagram reel link, SHOP NOW destination, optional .mp4 |
+| **Product Rail** | title + emoji, grid or carousel. Products are **hand-picked (drag to order)** — an empty list shows the **newest products automatically** — or taken from a **category**. Add as many rails as you like — Hot Sellers, Featured Picks, Wedding Edit… |
+| **Browse by Category** | which categories become tabs, and their order |
+| **Customer Reviews** | review images from the Media Library, optional caption |
+
+The storefront reads the result from `GET /wp-json/kayals/v1/homepage`.
+
+## Install
+
+1. Zip this folder (`kayals-homepage/`) and upload it via **Plugins → Add New → Upload Plugin**, or copy it to `wp-content/plugins/kayals-homepage/`.
+2. Activate **Kayals Homepage Builder**. WooCommerce must be active.
+3. A new **Homepage** menu appears in the admin sidebar.
+
+On first open it's pre-filled to match the current storefront (New Arrivals / Hot Sellers from tags, Featured Picks from the best-sellers category, etc.), so activating changes nothing until you edit and save.
+
+## Storefront side
+
+`VITE_WORDPRESS_URL` in the storefront `.env` must point at this WordPress site (it already does for the CMS pages). Nothing else to deploy: since 1.1 the plugin returns the product cards for each rail itself, in your order.
+
+## Updating the plugin
+
+Upload the new zip via **Plugins → Add New → Upload Plugin** and choose *Replace current with uploaded*, or overwrite the folder. Your saved layout is kept.
+
+If the plugin is deactivated or unreachable, the storefront silently falls back to its built-in homepage.
+
+## Notes
+
+- Saved layout is cached for 5 minutes on the WordPress side and invalidated on save and on any product/category change.
+- Hand-picked products that are later unpublished are skipped automatically.
+- Leaving a category list empty means "all categories" (strip: top-level only; tabs: every category), in WooCommerce's own order.
+- A rail with nothing picked (or no category chosen) shows the newest products, so New Arrivals works out of the box and no rail ever goes blank. Product tags are not used.

@@ -1,30 +1,28 @@
 import { Link, useLocation } from "react-router-dom";
-import { Storefront, SquaresFour, MagnifyingGlass, Heart, ShoppingCart, User } from "@phosphor-icons/react";
+import { Storefront, SquaresFour, MagnifyingGlass, ShoppingCart, User } from "@phosphor-icons/react";
 import { useSearch } from "@/contexts/SearchContext";
 import { useCart } from "@/contexts/CartContext";
-import { useWishlist } from "@/contexts/WishlistContext";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
  * Bottom navigation (mobile only).
  *
  * Uses Phosphor rather than the WoodMart icon font here: WoodMart is a glyph
- * font, so its stroke weight is baked into each character and cannot be
- * thinned. Phosphor draws real strokes, so `weight="thin"` gives the fine
- * hairline look this bar wants.
+ * font, so its stroke weight is baked into each character. Phosphor draws
+ * real strokes, so the weight can be tuned — "regular" here, a touch heavier
+ * than the hairline look, so the icons hold up at 20px on phone screens.
  *
  * Icons stay black on every tab; the active tab is marked by the gold rule
  * above it and a darker, heavier label, so colour never carries the state.
  */
 
 const ICON_SIZE = 20;
-const ICON_WEIGHT = "light" as const;
+const ICON_WEIGHT = "regular" as const;
 
 const MobileNav = () => {
   const location = useLocation();
   const { openSearch } = useSearch();
   const { totalItems: cartItems } = useCart();
-  const { totalItems: wishlistItems } = useWishlist();
   const { isAuthenticated, user } = useAuth();
 
   // Show login state on the account tab: first name when logged in, otherwise "Login"
@@ -37,7 +35,6 @@ const MobileNav = () => {
     { Icon: Storefront, label: "Shop", href: "/collections/all", matchPrefix: "/collections" },
     { Icon: SquaresFour, label: "Categories", href: "/categories" },
     { Icon: MagnifyingGlass, label: "Search", action: openSearch },
-    { Icon: Heart, label: "Wishlist", href: "/wishlist", count: wishlistItems },
     { Icon: ShoppingCart, label: "Cart", href: "/cart", count: cartItems },
     { Icon: User, label: accountLabel, href: "/account" },
   ];

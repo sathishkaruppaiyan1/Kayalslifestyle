@@ -25,15 +25,23 @@ const reviewImages = [
 const INSTAGRAM_REVIEWS_URL =
     "https://www.instagram.com/kayalslifestyle_boutique?stkn=NWozN2g2cWU3cDEz";
 
-const ReviewsSlider = () => {
+interface ReviewsSliderProps {
+    /** Images from the homepage builder; omit to use the bundled screenshots. */
+    images?: { src: string; alt: string }[];
+    title?: string;
+}
+
+const ReviewsSlider = ({ images = reviewImages, title = "What Our Customers Say" }: ReviewsSliderProps = {}) => {
     const autoplay = useCarouselAutoplay(4000);
+
+    if (images.length === 0) return null;
 
     return (
         <div className="py-12 bg-muted/30">
             <div className="container mx-auto px-4">
                 <div className="flex justify-center text-center">
-                    <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
-                        What Our Customers Say
+                    <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
+                        {title}
                     </h2>
                 </div>
 
@@ -43,7 +51,7 @@ const ReviewsSlider = () => {
                     className="w-full"
                 >
                     <CarouselContent className="-ml-3 sm:-ml-5">
-                        {reviewImages.map((image) => (
+                        {images.map((image) => (
                             <CarouselItem
                                 key={image.src}
                                 className="basis-full pl-3 sm:basis-1/2 sm:pl-5 lg:basis-1/3"

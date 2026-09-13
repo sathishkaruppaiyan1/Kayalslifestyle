@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProductCarousel from "@/components/home/ProductCarousel";
 import { useWooCommerceCategories, useWooCommerceProducts } from "@/hooks/useWooCommerce";
+import type { Category } from "@/types/product";
 
 /**
  * Category tabs + product carousel.
@@ -21,12 +22,19 @@ const EXCLUDED_SLUGS = new Set(["all-products"]);
 
 const HOW_MANY = 12;
 
-const CategoryTabsCarousel = () => {
-  const { data: categoriesData, isLoading: categoriesLoading } = useWooCommerceCategories();
+interface CategoryTabsCarouselProps {
+  /** Tabs from the homepage builder, in order; omit to show every category. */
+  categories?: Category[];
+  title?: string;
+}
+
+const CategoryTabsCarousel = ({ categories: provided, title = "Browse by Category" }: CategoryTabsCarouselProps = {}) => {
+  const { data: categoriesData, isLoading: fetching } = useWooCommerceCategories();
+  const categoriesLoading = !provided && fetching;
 
   const categories = useMemo(
-    () => (categoriesData?.categories || []).filter((c) => !EXCLUDED_SLUGS.has(c.slug)),
-    [categoriesData],
+    () => provided ?? (categoriesData?.categories || []).filter((c) => !EXCLUDED_SLUGS.has(c.slug)),
+    [provided, categoriesData],
   );
 
   const [activeSlug, setActiveSlug] = useState<string | null>(null);
@@ -53,7 +61,7 @@ const CategoryTabsCarousel = () => {
     <section className="py-10 lg:py-14 bg-muted">
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center text-center mb-6">
-          <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">Browse by Category</h2>
+          <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">{title}</h2>
         </div>
 
         {/* Tab row — scrolls sideways instead of wrapping. */}
