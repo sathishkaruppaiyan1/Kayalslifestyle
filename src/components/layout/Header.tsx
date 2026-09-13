@@ -12,12 +12,24 @@ import { X } from "@phosphor-icons/react";
 import WoodmartIcon from "@/components/ui/WoodmartIcon";
 
 // Header icons — real glyphs from the reference site's icon font (kayalslifestyle.com).
-const AdornMenu = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="menu" size={size} />;
-const AdornClose = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="close" size={size} />;
-const AdornHeart = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="heart" size={size} />;
-const AdornCart = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="cart" size={size} />;
-const AdornUser = ({ size = 20 }: { size?: number }) => <WoodmartIcon name="user" size={size} />;
-const AdornSearch = ({ size = 16 }: { size?: number }) => <WoodmartIcon name="search" size={size} />;
+const AdornMenu = ({ size = 20 }: { size?: number }) => (
+  <WoodmartIcon name="menu" size={size} />
+);
+const AdornClose = ({ size = 20 }: { size?: number }) => (
+  <WoodmartIcon name="close" size={size} />
+);
+const AdornHeart = ({ size = 20 }: { size?: number }) => (
+  <WoodmartIcon name="heart" size={size} />
+);
+const AdornCart = ({ size = 20 }: { size?: number }) => (
+  <WoodmartIcon name="cart" size={size} />
+);
+const AdornUser = ({ size = 20 }: { size?: number }) => (
+  <WoodmartIcon name="user" size={size} />
+);
+const AdornSearch = ({ size = 16 }: { size?: number }) => (
+  <WoodmartIcon name="search" size={size} />
+);
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -27,6 +39,15 @@ const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { data: categoriesData } = useWooCommerceCategories();
   const categories = categoriesData?.categories || [];
+  const mainCategories = categories.filter((category) => !category.parentId);
+  const subCategoriesByParent = categories.reduce<
+    Record<string, typeof categories>
+  >((groups, category) => {
+    if (category.parentId) {
+      (groups[category.parentId] ||= []).push(category);
+    }
+    return groups;
+  }, {});
 
   // Lock the page behind the drawer, and flag the open state on <body> so the
   // bottom nav can get out of the way. The nav is a sibling fixed element and
@@ -45,6 +66,7 @@ const Header = () => {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Shop All", href: "/collections/all" },
+    { name: "Categories", href: "/categories" },
     { name: "Contact", href: "/contact" },
   ];
 
@@ -66,7 +88,11 @@ const Header = () => {
 
             {/* Centre — logo */}
             <Link to="/" className="absolute left-1/2 -translate-x-1/2">
-              <img src="/logo-kayals.jpg" alt="Kayals Lifestyle" className="h-11 w-auto" />
+              <img
+                src="/logo-kayals.jpg"
+                alt="Kayals Lifestyle"
+                className="h-11 w-auto"
+              />
             </Link>
 
             {/* Right — wishlist, cart, account */}
@@ -170,7 +196,12 @@ const Header = () => {
                   </span>
                 )}
               </Link>
-              <Button variant="ghost" size="icon" className="relative" onClick={() => setCartOpen(true)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative"
+                onClick={() => setCartOpen(true)}
+              >
                 <AdornCart />
                 {cartItems > 0 && (
                   <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">
@@ -180,8 +211,6 @@ const Header = () => {
               </Button>
             </div>
           </div>
-
-
 
           {/* Mobile Sidebar (Menu & Categories) */}
           {isMenuOpen && (
@@ -194,8 +223,14 @@ const Header = () => {
               {/* Sidebar Content */}
               <div className="absolute top-0 left-0 bottom-0 w-[85%] max-w-sm bg-background animate-slide-in flex flex-col">
                 <div className="flex justify-between items-center p-4 border-b border-border shrink-0">
-                  <span className="font-body text-base font-semibold text-foreground">Menu</span>
-                  <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(false)}>
+                  <span className="font-body text-base font-semibold text-foreground">
+                    Menu
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
                     <X className="h-6 w-6" />
                   </Button>
                 </div>
@@ -203,8 +238,18 @@ const Header = () => {
                 <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pb-24">
                   <Tabs defaultValue="menu" className="w-full">
                     <TabsList className="grid w-full grid-cols-2 mb-6">
-                      <TabsTrigger value="menu" className="font-body text-sm font-semibold">Menu</TabsTrigger>
-                      <TabsTrigger value="categories" className="font-body text-sm font-semibold">Categories</TabsTrigger>
+                      <TabsTrigger
+                        value="menu"
+                        className="font-body text-sm font-semibold"
+                      >
+                        Menu
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="categories"
+                        className="font-body text-sm font-semibold"
+                      >
+                        Categories
+                      </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="menu" className="space-y-4">
@@ -213,7 +258,7 @@ const Header = () => {
                         <div className="mb-4 rounded-xl border border-border bg-muted/40 p-4">
                           <div className="flex items-center gap-3">
                             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-white font-bold uppercase">
-                              {(user.name?.trim()?.charAt(0) || "U")}
+                              {user.name?.trim()?.charAt(0) || "U"}
                             </div>
                             <div className="min-w-0">
                               <p className="font-body text-sm font-semibold text-foreground truncate">
@@ -251,13 +296,28 @@ const Header = () => {
                           onClick={() => setIsMenuOpen(false)}
                         >
                           <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100 text-green-700">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" strokeLinecap="round" strokeLinejoin="round" />
+                            <svg
+                              width="22"
+                              height="22"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            >
+                              <path
+                                d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
                             </svg>
                           </div>
                           <div className="min-w-0">
-                            <p className="font-body text-sm font-semibold text-foreground">Login / Sign Up</p>
-                            <p className="text-sm text-muted-foreground">Login with WhatsApp OTP</p>
+                            <p className="font-body text-sm font-semibold text-foreground">
+                              Login / Sign Up
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Login with WhatsApp OTP
+                            </p>
                           </div>
                         </Link>
                       )}
@@ -316,18 +376,42 @@ const Header = () => {
                         >
                           All Products
                         </Link>
-                        {categories.map((cat) => (
-                          <Link
+                        {mainCategories.map((cat) => (
+                          <div
                             key={cat.id}
-                            to={`/collections/${cat.slug}`}
-                            className="py-3 px-2 font-body text-base font-semibold text-foreground border-b border-border/50 hover:text-brand-ink transition-colors flex items-center justify-between"
-                            onClick={() => setIsMenuOpen(false)}
+                            className="border-b border-border/50 pb-2"
                           >
-                            <span>{cat.name}</span>
-                            {cat.image && (
-                              <img src={cat.image} alt={cat.name} className="w-8 h-8 rounded-full object-cover" />
+                            <Link
+                              to={`/collections/${cat.slug}`}
+                              className="flex items-center justify-between px-2 py-3 font-body text-base font-semibold text-foreground hover:text-brand-ink transition-colors"
+                              onClick={() => setIsMenuOpen(false)}
+                            >
+                              <span>{cat.name}</span>
+                              {cat.image && (
+                                <img
+                                  src={cat.image}
+                                  alt=""
+                                  className="h-8 w-8 rounded-full object-cover"
+                                />
+                              )}
+                            </Link>
+                            {subCategoriesByParent[cat.id]?.length > 0 && (
+                              <div className="ml-4 border-l border-border pl-3">
+                                {subCategoriesByParent[cat.id].map(
+                                  (subCategory) => (
+                                    <Link
+                                      key={subCategory.id}
+                                      to={`/collections/${subCategory.slug}`}
+                                      className="block py-2 font-body text-sm text-muted-foreground hover:text-brand-ink transition-colors"
+                                      onClick={() => setIsMenuOpen(false)}
+                                    >
+                                      {subCategory.name}
+                                    </Link>
+                                  ),
+                                )}
+                              </div>
                             )}
-                          </Link>
+                          </div>
                         ))}
                       </div>
                     </TabsContent>

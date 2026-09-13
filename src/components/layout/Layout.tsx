@@ -2,6 +2,7 @@ import PromoBar from "./PromoBar";
 import Header from "./Header";
 import Footer from "./Footer";
 import MobileNav from "./MobileNav";
+import FloatingWhatsAppButton from "./FloatingWhatsAppButton";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ const Layout = ({ children }: LayoutProps) => {
       <main className="flex-1 lg:pb-0">{children}</main>
       <Footer />
       <MobileNav />
+      <FloatingWhatsAppButton />
     </div>
   );
 };

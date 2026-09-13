@@ -9,7 +9,7 @@ const SizeChart = () => {
         <div className="container mx-auto px-4 py-8 lg:py-12 max-w-3xl">
           <div className="bg-background rounded-lg shadow-card p-4 lg:p-8">
             <img
-              src="/size-chart.jpg"
+              src="/Size-Chart.png"
               alt="Kayals Lifestyle Size Chart - Measurements in inches for sizes XS to 4XL"
               className="w-full h-auto rounded-lg animate-zoom-out"
               loading="lazy"

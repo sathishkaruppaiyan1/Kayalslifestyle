@@ -806,7 +806,7 @@ const ProductDetail = () => {
                   <div className="pb-4 text-sm text-muted-foreground leading-relaxed space-y-2">
                     <p>Available sizes: XS, S, M, L, XL, XXL, 3XL, 4XL</p>
                     <p>For size guidance, please refer to our size chart below.</p>
-                    <img src="/size-chart.jpg" alt="Size Chart" className="w-full h-auto rounded-lg my-3 animate-zoom-out" />
+                    <img src="/Size-Chart.png" alt="Size Chart" className="w-full h-auto rounded-lg my-3 animate-zoom-out" />
                     <p>Full lining available (inside)</p>
                     <p>Best quality and best stitching</p>
                   </div>

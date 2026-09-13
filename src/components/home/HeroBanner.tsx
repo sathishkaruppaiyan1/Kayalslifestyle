@@ -42,11 +42,9 @@ const HeroBanner = () => {
     return (
       <div className="w-full">
         <Link to="/collections/all">
-          {/* React 18 forwards only the lowercase `fetchpriority` DOM attribute. */}
-          <img
-            src="/hero-banner.jpg"
+          <ResponsiveBannerImage
+            desktopSrc="/hero-banner.jpg"
             alt="Tradition Meets Everyday You — sarees, lehengas, gowns and salwars"
-            className="w-full h-auto object-cover animate-zoom-out"
           />
         </Link>
       </div>
@@ -115,20 +113,10 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
   const isExternal = banner.redirect_link.startsWith("http");
 
   const image = (
-    <picture>
-      {banner.mobile_image_url && (
-        <source media="(max-width: 768px)" srcSet={banner.mobile_image_url} />
-      )}
-      {/* React 18 forwards only the lowercase `fetchpriority` DOM attribute. */}
-      <img
-        src={banner.image_url}
-        alt={banner.alt_text || "Banner"}
-        className="w-full h-auto object-cover animate-zoom-out"
-        loading="eager"
-        {...({ fetchpriority: "high" } as Record<string, string>)}
-        decoding="sync"
-      />
-    </picture>
+    <ResponsiveBannerImage
+      desktopSrc={banner.image_url}
+      alt={banner.alt_text || "Banner"}
+    />
   );
 
   if (isExternal) {
@@ -141,5 +129,26 @@ const BannerSlide = ({ banner }: { banner: HomeBanner }) => {
 
   return <Link to={banner.redirect_link}>{image}</Link>;
 };
+
+const ResponsiveBannerImage = ({
+  desktopSrc,
+  alt,
+}: {
+  desktopSrc: string;
+  alt: string;
+}) => (
+  <picture>
+    <source media="(max-width: 767px)" srcSet="/Mobile.png" />
+    <source media="(min-width: 768px) and (max-width: 1023px)" srcSet="/Tab.png" />
+    <img
+      src={desktopSrc}
+      alt={alt}
+      className="w-full h-auto object-cover animate-zoom-out"
+      loading="eager"
+      {...({ fetchpriority: "high" } as Record<string, string>)}
+      decoding="sync"
+    />
+  </picture>
+);
 
 export default HeroBanner;

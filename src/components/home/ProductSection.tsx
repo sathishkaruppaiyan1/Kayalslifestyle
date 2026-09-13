@@ -16,7 +16,7 @@ const ProductSection = ({ title, products, viewAllLink, emoji }: ProductSectionP
         <div className="flex flex-col items-center justify-center mb-6 lg:mb-8 relative">
           {/* Reference sets section titles in plain dark type on white, with a
               gold keyline — no filled slab. */}
-          <h2 className="section-title rule-gold flex flex-col items-center gap-2 text-center z-10">
+          <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
             <span className="flex items-center gap-2">
               {title} {emoji && <span>{emoji}</span>}
             </span>
@@ -33,7 +33,7 @@ const ProductSection = ({ title, products, viewAllLink, emoji }: ProductSectionP
           )}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-6">
           {products.map((product, index) => (
             <ProductCard key={`${product.id}-${index}`} product={product} />
           ))}

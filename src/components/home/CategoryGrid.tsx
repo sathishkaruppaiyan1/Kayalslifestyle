@@ -2,9 +2,27 @@ import { Link } from "react-router-dom";
 import { useWooCommerceCategories } from "@/hooks/useWooCommerce";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const CategoryGrid = () => {
+interface CategoryGridProps {
+  showAllCategories?: boolean;
+  title?: string;
+}
+
+const CategoryGrid = ({
+  showAllCategories = false,
+  title = "Shop By Category",
+}: CategoryGridProps) => {
   const { data, isLoading, error } = useWooCommerceCategories();
   const categories = data?.categories || [];
+  const displayedCategories = (showAllCategories
+    ? categories
+    : categories.filter(
+        (category) =>
+          category.parentId == null || String(category.parentId) === "0",
+      )
+  ).filter(
+    (category, index, filteredCategories) =>
+      filteredCategories.findIndex((item) => item.id === category.id) === index,
+  );
 
   if (error) {
     console.error("CategoryGrid error:", error);
@@ -14,9 +32,7 @@ const CategoryGrid = () => {
     return (
       <section className="pt-4 pb-12 lg:pb-16">
         <div className="container mx-auto px-4">
-          <h2 className="section-title text-center mb-8">
-            Shop By Category
-          </h2>
+          <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">{title}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="space-y-3">
@@ -30,19 +46,17 @@ const CategoryGrid = () => {
     );
   }
 
-  if (categories.length === 0) {
+  if (displayedCategories.length === 0) {
     return null;
   }
 
   return (
     <section className="pb-12 lg:pb-16 bg-background">
       <div className="container mx-auto px-4">
-        <h2 className="section-title text-center mb-8">
-          Shop By Category
-        </h2>
+        <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">{title}</h2>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {categories.map((category, index) => (
+          {displayedCategories.map((category, index) => (
             <Link
               key={category.id}
               to={`/collections/${category.slug}`}

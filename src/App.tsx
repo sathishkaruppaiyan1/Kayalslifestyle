@@ -42,6 +42,7 @@ const TrackOrder = lazy(() => import("./pages/TrackOrder"));
 const Orders = lazy(() => import("./pages/Orders"));
 const Contact = lazy(() => import("./pages/Contact"));
 const SizeChart = lazy(() => import("./pages/SizeChart"));
+const Categories = lazy(() => import("./pages/Categories"));
 
 const WordPressPageKeyed = (props: { routeSlug?: string }) => {
   const { pathname } = useLocation();
@@ -65,6 +66,7 @@ const App = () => (
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/collections/:slug" element={<Collection />} />
+                      <Route path="/categories" element={<Categories />} />
                       <Route path="/product/:id" element={<ProductDetail />} />
                       <Route path="/cart" element={<Cart />} />
                       <Route path="/wishlist" element={<Wishlist />} />

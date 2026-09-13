@@ -1,4 +1,3 @@
-import { Star, User } from "@phosphor-icons/react";
 import {
     Carousel,
     CarouselContent,
@@ -6,83 +5,76 @@ import {
     CarouselNext,
     CarouselPrevious,
 } from "@/components/ui/carousel";
+import { useCarouselAutoplay } from "@/hooks/useCarouselAutoplay";
 
-const reviews = [
+const reviewImages = [
     {
-        id: 1,
-        name: "Priya Sharma",
-        rating: 5,
-        text: "The quality of the fabric is amazing! Exceeded my expectations. Will definitely shop again.",
-        date: "2 days ago"
+        src: "/Kayals-1.jpeg",
+        alt: "Kayals Lifestyle customer review 1",
     },
     {
-        id: 2,
-        name: "Anjali Gupta",
-        rating: 5,
-        text: "Beautiful design and perfect fit. I received so many compliments.",
-        date: "1 week ago"
+        src: "/Kayals-2.jpeg",
+        alt: "Kayals Lifestyle customer review 2",
     },
     {
-        id: 3,
-        name: "Neha Patel",
-        rating: 4,
-        text: "Lovely collection. Shipping was fast and packaging was secure.",
-        date: "2 weeks ago"
+        src: "/Kayals-3.jpeg",
+        alt: "Kayals Lifestyle customer review 3",
     },
-    {
-        id: 4,
-        name: "Sneha Reddy",
-        rating: 5,
-        text: "Absolutely in love with the ethnic wear collection. Great prices too!",
-        date: "3 weeks ago"
-    },
-    {
-        id: 5,
-        name: "Meera Singh",
-        rating: 5,
-        text: "Best customer service and returns were hassle-free. Highly recommended.",
-        date: "1 month ago"
-    }
 ];
 
+const INSTAGRAM_REVIEWS_URL =
+    "https://www.instagram.com/kayalslifestyle_boutique?stkn=NWozN2g2cWU3cDEz";
+
 const ReviewsSlider = () => {
+    const autoplay = useCarouselAutoplay(4000);
+
     return (
         <div className="py-12 bg-muted/30">
             <div className="container mx-auto px-4">
-                <h2 className="text-2xl font-heading font-bold mb-8 text-center">
-                    What Our Customers Say
-                </h2>
+                <div className="flex justify-center text-center">
+                    <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
+                        What Our Customers Say
+                    </h2>
+                </div>
 
-                <Carousel className="w-full max-w-4xl mx-auto">
-                    <CarouselContent>
-                        {reviews.map((review) => (
-                            <CarouselItem key={review.id} className="md:basis-1/2 lg:basis-1/3 p-2">
-                                <div className="bg-background p-6 rounded-lg shadow-sm border border-border h-full flex flex-col">
-                                    <div className="flex items-center gap-1 mb-3 text-yellow-500">
-                                        {[...Array(5)].map((_, i) => (
-                                            <Star
-                                                key={i}
-                                                className={`h-4 w-4 ${i < review.rating ? "fill-current" : "text-muted"}`}
-                                             weight="fill" />
-                                        ))}
-                                    </div>
-                                    <p className="text-sm text-foreground mb-4 flex-1">"{review.text}"</p>
-                                    <div className="flex items-center gap-2 mt-auto">
-                                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                            <User className="h-4 w-4 text-muted-foreground" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold">{review.name}</p>
-                                            <p className="text-xs text-muted-foreground">{review.date}</p>
-                                        </div>
-                                    </div>
+                <Carousel
+                    opts={{ align: "start", loop: true }}
+                    plugins={autoplay}
+                    className="w-full"
+                >
+                    <CarouselContent className="-ml-3 sm:-ml-5">
+                        {reviewImages.map((image) => (
+                            <CarouselItem
+                                key={image.src}
+                                className="basis-full pl-3 sm:basis-1/2 sm:pl-5 lg:basis-1/3"
+                            >
+                                <div className="overflow-hidden rounded-lg border-2 border-brand-tint-strong bg-background p-1 shadow-md transition-shadow hover:shadow-lg">
+                                    <img
+                                        src={image.src}
+                                        alt={image.alt}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="aspect-[4/3] w-full object-cover"
+                                    />
                                 </div>
                             </CarouselItem>
                         ))}
                     </CarouselContent>
-                    <CarouselPrevious className="hidden md:flex" />
-                    <CarouselNext className="hidden md:flex" />
+
+                    <CarouselPrevious className="hidden lg:flex" />
+                    <CarouselNext className="hidden lg:flex" />
                 </Carousel>
+
+                <div className="mt-8 flex justify-center">
+                    <a
+                        href={INSTAGRAM_REVIEWS_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-brand-ink"
+                    >
+                        See More Customer Reviews
+                    </a>
+                </div>
             </div>
         </div>
     );

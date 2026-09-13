@@ -44,12 +44,17 @@ const ShopByReels = () => {
     <section className="py-10 lg:py-14 border-t border-border">
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center text-center mb-8">
-          <h2 className="section-title rule-gold">Shop by Reels</h2>
+          <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
+            {/* <h2 className="section-title rule-gold">*/}
+            Shop by Reels
+          </h2>
         </div>
 
-        <Carousel opts={{ align: "start", loop: true }}
+        <Carousel
+          opts={{ align: "start", loop: true }}
           plugins={autoplay}
-          className="w-full">
+          className="w-full"
+        >
           <CarouselContent className="-ml-3 md:-ml-4">
             {REELS.map((reel) => (
               <CarouselItem
@@ -80,7 +85,10 @@ const ShopByReels = () => {
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 animate-zoom-out"
                     onError={(e) => {
                       const t = e.target as HTMLImageElement;
-                      if (t.src !== window.location.origin + "/placeholder.svg") {
+                      if (
+                        t.src !==
+                        window.location.origin + "/placeholder.svg"
+                      ) {
                         t.src = "/placeholder.svg";
                       }
                     }}

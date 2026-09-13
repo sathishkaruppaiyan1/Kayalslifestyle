@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Storefront, MagnifyingGlass, Heart, ShoppingCart, User } from "@phosphor-icons/react";
+import { Storefront, SquaresFour, MagnifyingGlass, Heart, ShoppingCart, User } from "@phosphor-icons/react";
 import { useSearch } from "@/contexts/SearchContext";
 import { useCart } from "@/contexts/CartContext";
 import { useWishlist } from "@/contexts/WishlistContext";
@@ -35,6 +35,7 @@ const MobileNav = () => {
   const navItems = [
     // Shop stays lit across every /collections/* route, not just the index.
     { Icon: Storefront, label: "Shop", href: "/collections/all", matchPrefix: "/collections" },
+    { Icon: SquaresFour, label: "Categories", href: "/categories" },
     { Icon: MagnifyingGlass, label: "Search", action: openSearch },
     { Icon: Heart, label: "Wishlist", href: "/wishlist", count: wishlistItems },
     { Icon: ShoppingCart, label: "Cart", href: "/cart", count: cartItems },

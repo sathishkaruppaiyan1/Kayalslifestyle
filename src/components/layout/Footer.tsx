@@ -4,11 +4,13 @@ import { CaretDown } from "@phosphor-icons/react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   CONTACT_EMAIL,
-  CONTACT_PHONE_DISPLAY,
   MAILTO_URL,
   SOCIAL_LINKS,
-  WHATSAPP_URL,
 } from "@/lib/siteContact";
+import WhatsAppIcon from "./WhatsAppIcon";
+
+const FOOTER_CONTACT_PHONE = "8220020267";
+const FOOTER_WHATSAPP_URL = "https://wa.me/918220020267";
 
 // Social Icons with brand colors
 const IconInstagram = () => (
@@ -111,8 +113,8 @@ const Footer = () => {
           <FooterColumn title="Contact Us" defaultOpen>
             <div className="space-y-3 text-sm text-promo-foreground/70">
               <p>
-                <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
-                  {CONTACT_PHONE_DISPLAY}
+                <a href={FOOTER_WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
+                  +91 {FOOTER_CONTACT_PHONE}
                 </a>
               </p>
               <p>
@@ -135,12 +137,25 @@ const Footer = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:opacity-80 transition-opacity"
-                    aria-label={name}
+                    aria-label={
+                      name === "Instagram"
+                        ? "Follow Kayals Lifestyle Boutique on Instagram"
+                        : name
+                    }
                   >
                     <Icon />
                   </a>
                 );
               })}
+              <a
+                href="https://api.whatsapp.com/send/?phone=918220027625&text&type=phone_number&app_absent=0"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:opacity-80 transition-opacity"
+                aria-label="Chat with us on WhatsApp"
+              >
+                <WhatsAppIcon size={24} />
+              </a>
             </div>
           </FooterColumn>
         </div>

@@ -4,7 +4,6 @@ import { useMemo, useEffect } from "react";
 
 import HeroBanner from "@/components/home/HeroBanner";
 import CategoryCarousel from "@/components/home/CategoryCarousel";
-import CategoryGrid from "@/components/home/CategoryGrid";
 import ProductSection from "@/components/home/ProductSection";
 import ShopByReels from "@/components/home/ShopByReels";
 import CategoryTabsCarousel from "@/components/home/CategoryTabsCarousel";
@@ -41,11 +40,26 @@ const Index = () => {
   );
   const bestSellersId = bestSellers?.id?.toString();
 
+  const trendingCollection = categories?.categories?.find((category) => {
+    const name = category.name?.toLowerCase() ?? "";
+    const slug = category.slug?.toLowerCase() ?? "";
+
+    return slug.startsWith("trending") || name.includes("trending");
+  });
+  const trendingCollectionId = trendingCollection?.id?.toString();
+
   const { data: featuredData, isLoading: featuredLoading } = useWooCommerceProducts({
     category: bestSellersId,
     perPage: 12,
     skipVariations: true,
     enabled: !!bestSellersId,
+  });
+
+  const { data: trendingData, isLoading: trendingLoading } = useWooCommerceProducts({
+    category: trendingCollectionId,
+    perPage: 12,
+    skipVariations: true,
+    enabled: !!trendingCollectionId,
   });
 
   const newArrivals = newArrivalsData?.products || [];
@@ -80,15 +94,6 @@ const Index = () => {
         <ShopByReels />
       </Reveal>
 
-      {/* Categories load independently and show immediately */}
-      <Reveal>
-        <CategoryGrid />
-      </Reveal>
-
-      {/* Category tabs + per-category product rail */}
-      <Reveal>
-        <CategoryTabsCarousel />
-      </Reveal>
 
       {/* Products section - show products immediately when available */}
       {newArrivalsError ? (
@@ -162,6 +167,21 @@ const Index = () => {
             </Reveal>
           )}
 
+          {(trendingLoading || (trendingData?.products?.length ?? 0) > 0) && (
+            <Reveal>
+              <ProductCarousel
+                title="Trending Collections"
+                emoji="🔥"
+                products={trendingData?.products || []}
+                isLoading={trendingLoading}
+                viewAllLink={`/collections/${trendingCollection?.slug ?? "all"}`}
+              />
+            </Reveal>
+          )}
+      {/* Category tabs + per-category product rail */}
+      <Reveal>
+        <CategoryTabsCarousel />
+      </Reveal>
           <Reveal>
             <ReviewsSlider />
           </Reveal>

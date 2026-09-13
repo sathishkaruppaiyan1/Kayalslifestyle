@@ -7,7 +7,7 @@
  */
 
 /** Digits only, as entered. */
-export const CONTACT_PHONE = "8220020267";
+export const CONTACT_PHONE = "8220027625";
 
 /** E.164 without the +, for wa.me links. */
 export const CONTACT_PHONE_INTL = `91${CONTACT_PHONE}`;
@@ -23,7 +23,7 @@ export const MAILTO_URL = `mailto:${CONTACT_EMAIL}`;
 export const SOCIAL_LINKS = [
   {
     name: "Instagram",
-    href: "https://www.instagram.com/kayalslifestyle?igsh=NWozN2g2cWU3cDEz",
+    href: "https://www.instagram.com/kayalslifestyle_boutique?stkn=NWozN2g2cWU3cDEz",
   },
   {
     name: "YouTube",

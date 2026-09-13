@@ -64,4 +64,5 @@ export interface Category {
   name: string;
   image: string;
   slug: string;
+  parentId?: string | null;
 }

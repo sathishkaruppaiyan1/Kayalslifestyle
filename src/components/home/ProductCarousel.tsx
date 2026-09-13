@@ -50,7 +50,7 @@ const ProductCarousel = ({
       <div className="container mx-auto px-4">
         {title && (
           <div className="relative mb-6 flex flex-col items-center justify-center lg:mb-8">
-            <h2 className="section-title rule-gold flex flex-col items-center gap-2 text-center">
+            <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
               <span className="flex items-center gap-2">
                 {title} {emoji && <span>{emoji}</span>}
               </span>
@@ -85,11 +85,11 @@ const ProductCarousel = ({
           <Carousel opts={{ align: "start", loop: true }}
           plugins={autoplay}
           className="w-full">
-            <CarouselContent className="-ml-4 lg:-ml-6">
+            <CarouselContent className="-ml-2.5 sm:-ml-4 lg:-ml-6">
               {products.map((product, index) => (
                 <CarouselItem
                   key={`${product.id}-${index}`}
-                  className={`pl-4 lg:pl-6 ${SLIDE_BASIS}`}
+                  className={`pl-2.5 sm:pl-4 lg:pl-6 ${SLIDE_BASIS}`}
                 >
                   <ProductCard product={product} />
                 </CarouselItem>

@@ -10,8 +10,8 @@
        Every brand colour lives here -- never hardcode a hex in a component.
        --------------------------------------------------------------- */
 
-    --background: 0 0% 100%;          /* #FFFFFF - clean white ground */
-    --foreground: 0 0% 20%;           /* #333333 - headings & nav ink */
+    --background: 0 0% 100%; /* #FFFFFF - clean white ground */
+    --foreground: 0 0% 20%; /* #333333 - headings & nav ink */
 
     --card: 0 0% 100%;
     --card-foreground: 0 0% 20%;
@@ -20,53 +20,53 @@
     --popover-foreground: 0 0% 20%;
 
     /* Brand gold. Use for fills, bands and badges that carry white text. */
-    --primary: 36 71% 53%;            /* #DD9933 */
+    --primary: 36 71% 53%; /* #DD9933 */
     --primary-foreground: 0 0% 100%;
 
     /* Same hue, darkened until it clears 4.5:1 on white.
        Use for gold *text* (prices, links) -- --primary is too light to read. */
-    --brand-ink: 36 71% 35%;          /* #9A661A */
+    --brand-ink: 36 71% 35%; /* #9A661A */
 
     /* Tints of the brand, for hover grounds and soft fills. */
-    --brand-tint: 36 71% 96%;         /* #FDF6EC */
-    --brand-tint-strong: 36 71% 90%;  /* #F8E7CE */
+    --brand-tint: 36 71% 96%; /* #FDF6EC */
+    --brand-tint-strong: 36 71% 90%; /* #F8E7CE */
 
-    --secondary: 0 0% 96%;            /* #F5F5F5 */
+    --secondary: 0 0% 96%; /* #F5F5F5 */
     --secondary-foreground: 0 0% 20%;
 
-    --muted: 0 0% 97%;                /* #F7F7F7 */
-    --muted-foreground: 0 0% 46%;     /* #767676 - body copy */
+    --muted: 0 0% 97%; /* #F7F7F7 */
+    --muted-foreground: 0 0% 46%; /* #767676 - body copy */
 
     --accent: 36 71% 96%;
     --accent-foreground: 36 71% 35%;
 
-    --destructive: 4 74% 46%;         /* #CE2C21 - errors only */
+    --destructive: 4 74% 46%; /* #CE2C21 - errors only */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;               /* #E6E6E6 - rgba(0,0,0,.1) on white */
+    --border: 0 0% 90%; /* #E6E6E6 - rgba(0,0,0,.1) on white */
     --input: 0 0% 90%;
     --ring: 36 71% 53%;
 
-    --radius: 0.3125rem;              /* 5px, matching the reference */
+    --radius: 0.3125rem; /* 5px, matching the reference */
 
     /* Custom tokens */
-    --font-heading: 'Hanken Grotesk', 'Jost', sans-serif;
-    --font-body: 'Jost', sans-serif;
+    --font-heading: "Hanken Grotesk", "Jost", sans-serif;
+    --font-body: "Jost", sans-serif;
 
-    --promo-bar: 0 0% 6%;             /* #101010 - promo bar & footer */
+    --promo-bar: 0 0% 6%; /* #101010 - promo bar & footer */
     --promo-bar-foreground: 0 0% 100%;
 
-    --price: 36 71% 35%;              /* readable gold */
+    --price: 36 71% 35%; /* readable gold */
     --price-old: 0 0% 60%;
 
-    --badge-sale: 36 71% 53%;         /* gold pill, as on the reference */
+    --badge-sale: 36 71% 53%; /* gold pill, as on the reference */
     --badge-sale-foreground: 0 0% 100%;
     --badge-new: 0 0% 12%;
     --badge-new-foreground: 0 0% 100%;
     --badge-soldout: 0 0% 45%;
     --badge-soldout-foreground: 0 0% 100%;
 
-    --success: 145 63% 42%;           /* WhatsApp / in-stock green */
+    --success: 145 63% 42%; /* WhatsApp / in-stock green */
 
     --overlay: 0 0% 0% / 0.5;
   }
@@ -84,7 +84,7 @@
     --primary: 36 71% 53%;
     --primary-foreground: 0 0% 10%;
 
-    --brand-ink: 36 71% 62%;          /* lighten instead: dark ground */
+    --brand-ink: 36 71% 62%; /* lighten instead: dark ground */
     --brand-tint: 36 30% 14%;
     --brand-tint-strong: 36 35% 20%;
 
@@ -137,7 +137,12 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-heading);
     @apply font-semibold;
     line-height: 1.25;
@@ -151,10 +156,18 @@
   }
 
   /* Type scale */
-  h1 { @apply text-3xl lg:text-4xl; }
-  h2 { @apply text-2xl lg:text-3xl; }
-  h3 { @apply text-lg; }
-  h4 { @apply text-base; }
+  h1 {
+    @apply text-3xl lg:text-4xl;
+  }
+  h2 {
+    @apply text-2xl lg:text-3xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
+  h4 {
+    @apply text-base;
+  }
 
   :where(p) {
     color: hsl(var(--muted-foreground));
@@ -172,6 +185,57 @@
 @layer components {
   .promo-bar {
     @apply bg-[hsl(var(--promo-bar))] text-[hsl(var(--promo-bar-foreground))];
+  }
+
+  .promo-marquee {
+    @apply flex h-9 items-center overflow-hidden;
+  }
+
+  .promo-marquee-track {
+    display: flex;
+    width: max-content;
+    animation: promo-marquee-scroll 28s linear infinite;
+    will-change: transform;
+  }
+
+  .promo-marquee-group {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .promo-message {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 2.25rem;
+    padding: 0 2.5rem;
+    font-weight: 500;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+  }
+
+  .promo-divider {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    color: hsl(var(--promo-bar-foreground) / 0.35);
+    font-weight: 400;
+  }
+
+  @keyframes promo-marquee-scroll {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .promo-marquee-track {
+      animation-play-state: paused;
+    }
   }
 
   .price {
@@ -295,7 +359,7 @@
     font-family: var(--font-heading);
     @apply font-semibold tracking-wide;
   }
-  
+
   .text-body {
     font-family: var(--font-body);
   }
@@ -308,25 +372,25 @@
   .prose > div {
     @apply text-left;
   }
-  
+
   /* Fix inline styles from WordPress that might break layout */
   .prose [style*="text-align"] {
     @apply !text-left;
   }
-  
+
   .prose [style*="float"] {
     @apply !float-none;
   }
-  
+
   /* Ensure proper spacing for nested elements */
   .prose > *:first-child {
     @apply mt-0;
   }
-  
+
   .prose > *:last-child {
     @apply mb-0;
   }
-  
+
   /* Better list styling */
   .prose ul ul,
   .prose ol ol,
@@ -334,72 +398,72 @@
   .prose ol ul {
     @apply mt-2 mb-2 ml-4;
   }
-  
+
   /* Fix table alignment */
   .prose table {
     @apply text-left;
   }
-  
+
   /* Ensure images don't break layout */
   .prose img {
     @apply max-w-full h-auto;
   }
-  
+
   /* Fix any divs with inline styles */
   .prose div[style] {
     @apply !block;
   }
-  
+
   /* Better paragraph spacing */
   .prose p + p {
     @apply mt-4;
   }
-  
+
   /* Fix alignment for text blocks */
   .prose p,
   .prose li,
   .prose td {
     @apply text-left;
   }
-  
+
   /* Remove any center alignment from WordPress */
   .prose [style*="center"],
   .prose [align="center"] {
     @apply !text-left;
   }
-  
+
   /* Fix spacing issues */
   .prose br {
     @apply block;
   }
-  
+
   /* Ensure proper line height */
   .prose {
     @apply leading-relaxed;
   }
-  
+
   /* Fix any weird margins from WordPress */
   .prose * {
     @apply max-w-full;
   }
-  
+
   /* Clean up any WordPress wrapper divs */
   .prose div {
     @apply text-left;
   }
-  
+
   /* Better spacing between sections */
   .prose h1 + p,
   .prose h2 + p,
   .prose h3 + p {
     @apply mt-2;
   }
-  
+
   /* Fix list item spacing */
   .prose li p {
     @apply mb-2 mt-0;
   }
-  
+
   /* Ensure proper text wrapping */
   .prose p,
   .prose li {
@@ -411,16 +475,17 @@
    This is the app's primary icon system; use it via <WoodmartIcon name="..." />.
    Phosphor is kept only for shadcn primitives that ship with their own icons. */
 @font-face {
-  font-family: 'woodmart-font';
-  src: url('/fonts/woodmart-font.woff2') format('woff2'),
-       url('/fonts/woodmart-font.woff') format('woff');
+  font-family: "woodmart-font";
+  src:
+    url("/fonts/woodmart-font.woff2") format("woff2"),
+    url("/fonts/woodmart-font.woff") format("woff");
   font-weight: normal;
   font-style: normal;
   font-display: block;
 }
 
 .wd-icon {
-  font-family: 'woodmart-font' !important;
+  font-family: "woodmart-font" !important;
   font-style: normal;
   font-weight: normal;
   font-variant: normal;

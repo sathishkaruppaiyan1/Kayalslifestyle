@@ -29,7 +29,7 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
     let imageUrl: string;
     if (selectedColor && product.variationImages) {
       const variationMatch = product.variationImages.find(
-        (v) => v.color.toLowerCase() === selectedColor.toLowerCase()
+        (v) => v.color.toLowerCase() === selectedColor.toLowerCase(),
       );
       if (variationMatch && variationMatch.images.length > 0) {
         imageUrl = variationMatch.images[0];
@@ -65,7 +65,8 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
     }
 
     // Default to first size if available, or just add product
-    const size = product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
+    const size =
+      product.sizes && product.sizes.length > 0 ? product.sizes[0] : undefined;
     addToCart(product, 1, size, selectedColor || undefined);
   };
 
@@ -98,20 +99,10 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {product.discount && (
-            <span className="badge-sale">
-              -{product.discount}%
-            </span>
+            <span className="badge-sale">-{product.discount}%</span>
           )}
-          {product.isNew && (
-            <span className="badge-new">
-              New
-            </span>
-          )}
-          {product.isSoldOut && (
-            <span className="badge-soldout">
-              Sold out
-            </span>
-          )}
+          {product.isNew && <span className="badge-new">New</span>}
+          {product.isSoldOut && <span className="badge-soldout">Sold out</span>}
         </div>
 
         {/* Action buttons - hidden on mobile for Cart, visible on hover desktop */}
@@ -136,7 +127,8 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
         </div>
 
         {/* Add to Cart on hover - bottom (hidden on mobile, visible on desktop hover) */}
-        <div className="hidden md:block absolute bottom-0 left-0 right-0 bg-primary text-primary-foreground py-3 text-center font-semibold text-[13px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer uppercase"
+        <div
+          className="hidden md:block absolute bottom-0 left-0 right-0 bg-primary text-primary-foreground py-3 text-center font-semibold text-[13px] tracking-wide opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer uppercase"
           onClick={handleAddToCart}
         >
           {product.isSoldOut ? "SOLD OUT" : "ADD TO CART"}
@@ -146,20 +138,27 @@ const ProductCard = memo(({ product }: ProductCardProps) => {
       {/* Product info */}
       <div className="mt-3 space-y-2 text-center">
         <Link to={`/product/${product.id}`}>
-          <h3 className="font-heading text-sm font-semibold text-foreground hover:text-brand-ink transition-colors line-clamp-1">
+          <h3 className="font-heading text-md font-bold text-black hover:text-brand-ink transition-colors line-clamp-1">
             {product.name}
           </h3>
         </Link>
 
         <div className="flex items-center justify-center flex-wrap gap-2">
-          <span className="price text-[15px]">{formatPrice(product.price)}</span>
+          <span className="price text-[15px]">
+            {formatPrice(product.price)}
+          </span>
           {product.originalPrice && product.originalPrice > product.price && (
             <>
               <span className="price-old text-[13px]">
                 {formatPrice(product.originalPrice)}
               </span>
               <span className="text-[11px] font-semibold text-muted-foreground">
-                {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+                {Math.round(
+                  ((product.originalPrice - product.price) /
+                    product.originalPrice) *
+                    100,
+                )}
+                % OFF
               </span>
             </>
           )}

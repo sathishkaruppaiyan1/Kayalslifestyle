@@ -34,7 +34,7 @@ const ITEM_BASIS =
 const CategoryCarousel = () => {
   const autoplay = useCarouselAutoplay(4500);
   const { data, isLoading } = useWooCommerceCategories();
-  const categories = data?.categories || [];
+  const categories = (data?.categories || []).filter((category) => !category.parentId);
 
   if (isLoading) {
     return (
@@ -93,8 +93,8 @@ const CategoryCarousel = () => {
             ))}
           </CarouselContent>
 
-          <CarouselPrevious className="hidden lg:flex" />
-          <CarouselNext className="hidden lg:flex" />
+          <CarouselPrevious className="hidden md:flex" />
+          <CarouselNext className="hidden md:flex" />
         </Carousel>
       </div>
     </section>

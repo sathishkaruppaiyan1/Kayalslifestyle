@@ -53,7 +53,7 @@ const CategoryTabsCarousel = () => {
     <section className="py-10 lg:py-14 bg-muted">
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center text-center mb-6">
-          <h2 className="section-title rule-gold">Browse by Category</h2>
+          <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">Browse by Category</h2>
         </div>
 
         {/* Tab row — scrolls sideways instead of wrapping. */}
