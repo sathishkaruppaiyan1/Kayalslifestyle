@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Kayals Homepage Builder
  * Description: Build the storefront homepage from WP admin — top bar messages, category strip, hero banners, reels, product rails (Hot Sellers, Featured Picks…), browse-by-category tabs and customer review images. Drag to reorder; the React storefront reads everything from /wp-json/kayals/v1/homepage.
- * Version:     1.2.1
+ * Version:     1.4.1
  * Author:      Kayals Lifestyle
  * Requires Plugins: woocommerce
  * License:     GPL-2.0-or-later
@@ -18,7 +18,7 @@ final class Kayals_Homepage {
 	const TRANSIENT  = 'kayals_homepage_public';
 	const CAP        = 'manage_woocommerce';
 	const REST_NS    = 'kayals/v1';
-	const VERSION    = '1.2.1';
+	const VERSION    = '1.4.1';
 
 	/** Section types and the fields each one carries. Anything else is dropped on save. */
 	const TYPES = array( 'category_strip', 'hero', 'reels', 'products', 'category_tabs', 'reviews' );
@@ -29,7 +29,9 @@ final class Kayals_Homepage {
 		add_action( 'wp_ajax_kayals_hp_save', array( __CLASS__, 'ajax_save' ) );
 		add_action( 'wp_ajax_kayals_hp_search_products', array( __CLASS__, 'ajax_search_products' ) );
 		add_action( 'wp_ajax_kayals_hp_products_by_ids', array( __CLASS__, 'ajax_products_by_ids' ) );
+		add_action( 'wp_ajax_kayals_hp_save_index', array( __CLASS__, 'ajax_save_index' ) );
 		add_action( 'rest_api_init', array( __CLASS__, 'rest_routes' ) );
+		add_action( 'admin_init', array( __CLASS__, 'ensure_uploads_cors' ) );
 
 		// Any catalogue change can alter a rail, so drop the cached payload.
 		foreach ( array( 'save_post_product', 'deleted_post', 'created_product_cat', 'edited_product_cat', 'delete_product_cat' ) as $hook ) {
@@ -69,7 +71,10 @@ final class Kayals_Homepage {
 		}
 		wp_enqueue_media();
 		wp_enqueue_style( 'kayals-hp', plugins_url( 'admin/app.css', __FILE__ ), array(), self::VERSION );
-		wp_enqueue_script( 'kayals-hp', plugins_url( 'admin/app.js', __FILE__ ), array( 'jquery', 'jquery-ui-sortable' ), self::VERSION, true );
+		// Photo-search indexer: TensorFlow.js + MobileNet, loaded only on this admin page.
+		wp_enqueue_script( 'kayals-tfjs', 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js', array(), '4.22.0', true );
+		wp_enqueue_script( 'kayals-mobilenet', 'https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js', array( 'kayals-tfjs' ), '2.1.1', true );
+		wp_enqueue_script( 'kayals-hp', plugins_url( 'admin/app.js', __FILE__ ), array( 'jquery', 'jquery-ui-sortable', 'kayals-mobilenet' ), self::VERSION, true );
 
 		wp_localize_script(
 			'kayals-hp',
@@ -80,8 +85,137 @@ final class Kayals_Homepage {
 				'data'       => self::get_config(),
 				'categories' => self::all_terms( 'product_cat' ),
 				'restUrl'    => rest_url( self::REST_NS . '/homepage' ),
+				'restBase'   => rest_url( self::REST_NS ),
+				'index'      => self::index_status(),
 			)
 		);
+	}
+
+	/* ------------------------------------------------------------------ */
+	/* Photo-search image index                                             */
+	/*                                                                      */
+	/* The storefront's photo search compares a shopper's photo against a   */
+	/* fingerprint of every product image. Those fingerprints are computed  */
+	/* in the admin's browser (Homepage → Photo search → Build index) and   */
+	/* stored as one file under uploads; the storefront downloads it once.  */
+	/* ------------------------------------------------------------------ */
+
+	const INDEX_MODEL = 'mobilenet-v2-a0.50';
+	const INDEX_DIM   = 1280;
+
+	private static function index_paths() {
+		$upload = wp_upload_dir();
+		$dir    = trailingslashit( $upload['basedir'] ) . 'kayals-homepage';
+		$url    = trailingslashit( $upload['baseurl'] ) . 'kayals-homepage';
+		return array( 'dir' => $dir, 'file' => $dir . '/image-index.json', 'url' => $url . '/image-index.json' );
+	}
+
+	private static function published_product_count() {
+		$counts = wp_count_posts( 'product' );
+		return isset( $counts->publish ) ? (int) $counts->publish : 0;
+	}
+
+	public static function index_status() {
+		$meta  = get_option( 'kayals_hp_index_meta' );
+		$paths = self::index_paths();
+		$has   = is_array( $meta ) && file_exists( $paths['file'] );
+		return array(
+			'built'    => $has,
+			'count'    => $has ? (int) $meta['count'] : 0,
+			'version'  => $has ? (string) $meta['version'] : '',
+			'built_at' => $has ? (string) $meta['built_at'] : '',
+			'model'    => self::INDEX_MODEL,
+			'dim'      => self::INDEX_DIM,
+			'catalog'  => self::published_product_count(),
+			// Served through REST rather than as a static upload: the storefront runs on
+			// another domain and WordPress's REST layer sends the CORS headers uploads don't.
+			'url'      => $has ? rest_url( self::REST_NS . '/image-index/file' ) . '?v=' . rawurlencode( (string) $meta['version'] ) : '',
+		);
+	}
+
+	/** GET /catalog -> every published product with a medium-size image, for the indexer. */
+	public static function rest_catalog() {
+		$cached = get_transient( 'kayals_hp_catalog' );
+		if ( false === $cached ) {
+			$ids    = wc_get_products( array( 'status' => 'publish', 'limit' => -1, 'return' => 'ids' ) );
+			$cached = array();
+			foreach ( $ids as $id ) {
+				$thumb_id = get_post_thumbnail_id( $id );
+				$url      = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'medium' ) : '';
+				if ( $url ) {
+					$cached[] = array( 'id' => (string) $id, 'image' => $url );
+				}
+			}
+			set_transient( 'kayals_hp_catalog', $cached, 10 * MINUTE_IN_SECONDS );
+		}
+		return new WP_REST_Response( array( 'count' => count( $cached ), 'products' => $cached ) );
+	}
+
+	/** GET /image-index -> where the storefront can download the index (404 until built). */
+	public static function rest_image_index() {
+		$status = self::index_status();
+		if ( ! $status['built'] ) {
+			return new WP_REST_Response( array( 'error' => 'Image index not built yet' ), 404 );
+		}
+		$response = new WP_REST_Response( $status );
+		$response->header( 'Cache-Control', 'public, max-age=300' );
+		return $response;
+	}
+
+	/** GET /image-index/file -> the index itself (raw JSON, cacheable, CORS-open). */
+	public static function rest_image_index_file() {
+		$paths = self::index_paths();
+		if ( ! file_exists( $paths['file'] ) ) {
+			return new WP_REST_Response( array( 'error' => 'Image index not built yet' ), 404 );
+		}
+		// Bypass WP_REST_Response: re-encoding a 1 MB JSON array through PHP is
+		// slow and pointless when the file on disk already is the response.
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Access-Control-Allow-Origin: *' );
+		header( 'Cache-Control: public, max-age=31536000, immutable' ); // URL carries ?v=<version>
+		header( 'Content-Length: ' . filesize( $paths['file'] ) );
+		readfile( $paths['file'] );
+		exit;
+	}
+
+	/** GET /products?ids=1,2,3 -> product cards, in that order (search results). */
+	public static function rest_products( WP_REST_Request $req ) {
+		$ids = array_slice( array_filter( array_map( 'absint', explode( ',', (string) $req->get_param( 'ids' ) ) ) ), 0, 60 );
+		$response = new WP_REST_Response( array( 'products' => self::product_cards( $ids ) ) );
+		$response->header( 'Cache-Control', 'public, max-age=60' );
+		return $response;
+	}
+
+	/** Admin saves the fingerprints the browser computed. */
+	public static function ajax_save_index() {
+		self::guard();
+		$raw = wp_unslash( $_POST['index'] ?? '' );
+		$idx = json_decode( $raw, true );
+		if ( ! is_array( $idx ) || empty( $idx['ids'] ) || empty( $idx['data'] ) || ! is_array( $idx['ids'] ) ) {
+			wp_send_json_error( 'Invalid index payload', 400 );
+		}
+		$count = count( $idx['ids'] );
+		$bytes = strlen( base64_decode( $idx['data'], true ) ?: '' );
+		if ( $bytes !== $count * self::INDEX_DIM ) {
+			wp_send_json_error( "Index size mismatch ({$bytes} bytes for {$count} products)", 400 );
+		}
+		$paths = self::index_paths();
+		wp_mkdir_p( $paths['dir'] );
+		$version = gmdate( 'YmdHis' );
+		$file    = array(
+			'model'   => self::INDEX_MODEL,
+			'dim'     => self::INDEX_DIM,
+			'version' => $version,
+			'ids'     => array_values( array_map( 'strval', $idx['ids'] ) ),
+			'data'    => (string) $idx['data'],
+		);
+		if ( false === file_put_contents( $paths['file'], wp_json_encode( $file ) ) ) {
+			wp_send_json_error( 'Could not write ' . $paths['file'], 500 );
+		}
+		update_option( 'kayals_hp_index_meta', array( 'count' => $count, 'version' => $version, 'built_at' => gmdate( 'c' ) ), false );
+		delete_transient( 'kayals_hp_catalog' );
+		wp_send_json_success( self::index_status() );
 	}
 
 	private static function all_terms( $taxonomy ) {
@@ -379,6 +513,69 @@ final class Kayals_Homepage {
 				'permission_callback' => '__return_true',
 			)
 		);
+		foreach ( array( 'catalog' => 'rest_catalog', 'image-index' => 'rest_image_index', 'image-index/file' => 'rest_image_index_file', 'products' => 'rest_products' ) as $route => $cb ) {
+			register_rest_route(
+				self::REST_NS,
+				'/' . $route,
+				array( 'methods' => 'GET', 'callback' => array( __CLASS__, $cb ), 'permission_callback' => '__return_true' )
+			);
+		}
+		// Storefront photo search: small product images for the similarity model.
+		register_rest_route(
+			self::REST_NS,
+			'/thumbs',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'rest_thumbs' ),
+				'permission_callback' => '__return_true',
+				'args'                => array( 'ids' => array( 'required' => true ) ),
+			)
+		);
+	}
+
+	/** GET /thumbs?ids=1,2,3 -> { "1": "<medium-size url>", ... } */
+	public static function rest_thumbs( WP_REST_Request $req ) {
+		$ids = array_slice( array_filter( array_map( 'absint', explode( ',', (string) $req->get_param( 'ids' ) ) ) ), 0, 100 );
+		$out = array();
+		foreach ( $ids as $id ) {
+			$thumb_id = get_post_thumbnail_id( $id );
+			$url      = $thumb_id ? wp_get_attachment_image_url( $thumb_id, 'medium' ) : '';
+			if ( $url ) {
+				$out[ (string) $id ] = $url;
+			}
+		}
+		$response = new WP_REST_Response( $out );
+		$response->header( 'Cache-Control', 'public, max-age=3600' );
+		return $response;
+	}
+
+	/**
+	 * The storefront analyses product images in the browser (photo search).
+	 * Browsers only allow that when the image is same-origin or served with a
+	 * CORS header, so make sure uploads carry one. Runs once per plugin version.
+	 */
+	public static function ensure_uploads_cors() {
+		if ( get_option( 'kayals_hp_cors_version' ) === self::VERSION ) {
+			return;
+		}
+		$upload = wp_upload_dir();
+		$file   = trailingslashit( $upload['basedir'] ) . '.htaccess';
+		$block = <<<'HTACCESS'
+# BEGIN Kayals Homepage Builder (CORS for storefront photo search)
+<IfModule mod_headers.c>
+  <FilesMatch "\.(jpe?g|png|gif|webp|avif)$">
+    Header set Access-Control-Allow-Origin "*"
+  </FilesMatch>
+</IfModule>
+# END Kayals Homepage Builder
+
+HTACCESS;
+		$existing = file_exists( $file ) ? (string) file_get_contents( $file ) : '';
+		if ( false === strpos( $existing, 'BEGIN Kayals Homepage Builder' ) ) {
+			$sep = ( '' !== $existing && PHP_EOL !== substr( $existing, -1 ) ) ? PHP_EOL : '';
+			@file_put_contents( $file, $existing . $sep . $block );
+		}
+		update_option( 'kayals_hp_cors_version', self::VERSION, false );
 	}
 
 	public static function rest_homepage() {
@@ -587,6 +784,48 @@ final class Kayals_Homepage {
 			}
 		}
 
+		// One image per colour, so the card's swatches show the actual variation
+		// photo (the storefront's woocommerce-products list path does the same).
+		$variation_images = array();
+		if ( $p->is_type( 'variable' ) ) {
+			foreach ( $p->get_children() as $vid ) {
+				$v = wc_get_product( $vid );
+				if ( ! $v ) {
+					continue;
+				}
+				$color = '';
+				foreach ( $v->get_attributes() as $attr_key => $val ) {
+					$label = strtolower( wc_attribute_label( $attr_key, $v ) );
+					if ( in_array( $label, array( 'color', 'colour' ), true ) ) {
+						if ( taxonomy_exists( $attr_key ) ) {
+							$term  = get_term_by( 'slug', $val, $attr_key );
+							$color = $term ? $term->name : $val;
+						} else {
+							$color = $val;
+						}
+						break;
+					}
+				}
+				$color = trim( (string) $color );
+				if ( '' === $color ) {
+					$color = 'Default';
+				}
+				if ( isset( $variation_images[ $color ] ) ) {
+					continue;
+				}
+				// 'edit' context = the variation's own image only, not the parent's fallback.
+				$img_id = $v->get_image_id( 'edit' );
+				$url    = $img_id ? wp_get_attachment_image_url( $img_id, 'full' ) : '';
+				if ( $url ) {
+					$variation_images[ $color ] = $url;
+				}
+			}
+		}
+		$variation_list = array();
+		foreach ( $variation_images as $color => $url ) {
+			$variation_list[] = array( 'color' => $color, 'images' => array( $url ) );
+		}
+
 		$cat_ids = $p->get_category_ids();
 		$cat     = ! empty( $cat_ids ) ? get_term( $cat_ids[0], 'product_cat' ) : null;
 		$cat     = ( $cat && ! is_wp_error( $cat ) ) ? $cat : null;
@@ -603,6 +842,7 @@ final class Kayals_Homepage {
 			'originalPrice'    => $regular > 0 ? $regular : null,
 			'discount'         => $on_sale ? (int) round( ( $regular - $price ) / $regular * 100 ) : null,
 			'images'           => $images,
+			'variationImages'  => $variation_list ? $variation_list : null,
 			'colors'           => $colors,
 			'sizes'            => $sizes,
 			'category'         => $cat ? $cat->name : 'Uncategorized',

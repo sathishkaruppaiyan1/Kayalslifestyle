@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { X, CircleNotch } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,15 @@ import { useSearch } from "@/contexts/SearchContext";
 import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
 import { useVoiceSearch } from "@/hooks/useVoiceSearch";
 import { searchByImage } from "@/lib/imageSearch";
+import {
+  fetchProductCards,
+  loadCatalogIndex,
+  preloadVisualSearch,
+  rankBySimilarity,
+  resolveThumbnails,
+  searchCatalog,
+} from "@/lib/visualSearch";
+import type { Product } from "@/types/product";
 import { COLOR_FAMILIES, hexForFamily, productColorFamilies } from "@/lib/colorFamilies";
 import SearchModeButtons from "./SearchModeButtons";
 
@@ -18,18 +27,39 @@ const AdornSearch = () => (
 
 interface PhotoState {
   previewUrl: string;
+  /**
+   * "catalog": matched against the whole-store image index (plugin ≥ 1.4).
+   * "colour": no index yet — colour-narrow a page of products, then rank.
+   */
+  mode: "catalog" | "colour";
+  /** Look-alike products from the index, best first (catalog mode). */
+  matches: Product[];
   /** Families detected in the photo, dominant first. */
   detected: string[];
   /** Raw palette swatches shown next to the thumbnail. */
   palette: string[];
   /** Families currently applied — shopper can toggle detected ones off. */
   selected: string[];
+  /** Downsized photo for the similarity model. */
+  canvas: HTMLCanvasElement;
+}
+
+interface VisualRank {
+  /** product id → similarity score; products missing here couldn't be analysed. */
+  scores: Map<string, number>;
+  done: number;
+  total: number;
+  running: boolean;
 }
 
 const RESULT_LIMIT = 8;
+const CATALOG_RESULT_LIMIT = 12;
 // How many to pull when we filter by colour on the client; the catalogue has
 // ~15 families so a page of 48 leaves enough per colour to fill the grid.
 const PHOTO_FETCH_SIZE = 48;
+// Below this many colour matches the colour filter is too tight to be useful,
+// so similarity ranks the whole fetched page instead.
+const MIN_COLOR_CANDIDATES = 4;
 const NO_COLORS: string[] = [];
 
 const SearchModal = () => {
@@ -39,6 +69,8 @@ const SearchModal = () => {
   const [photo, setPhoto] = useState<PhotoState | null>(null);
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [visual, setVisual] = useState<VisualRank | null>(null);
+  const rankRun = useRef(0); // ignore results from a superseded ranking run
 
   const voice = useVoiceSearch({
     onTranscript: (text) => setQuery(text),
@@ -49,27 +81,76 @@ const SearchModal = () => {
   const hasTextQuery = debouncedQuery.length >= 2;
   const canSearch = hasTextQuery || hasPhoto;
 
-  const { data, isLoading } = useWooCommerceProducts({
+  const catalogMode = photo?.mode === "catalog";
+  const { data, isLoading: fetching } = useWooCommerceProducts({
     search: hasTextQuery ? debouncedQuery : undefined,
     perPage: hasPhoto ? PHOTO_FETCH_SIZE : RESULT_LIMIT,
     skipVariations: hasPhoto, // colour attributes still come through on the fast path
-    enabled: canSearch,
+    enabled: canSearch && !(catalogMode && !hasTextQuery),
   });
+  const isLoading = fetching && !(catalogMode && !hasTextQuery);
 
-  const products = useMemo(() => {
+  // Stage 1: colour narrows the page of products to candidates.
+  const candidates = useMemo(() => {
     if (!canSearch) return [];
     const all = data?.products || [];
-    if (photoColors.length === 0) return all.slice(0, RESULT_LIMIT);
+    if (photoColors.length === 0) return all;
     const wanted = new Set(photoColors);
-    return all
-      .filter((p) => {
-        for (const family of productColorFamilies(p.colors)) {
-          if (wanted.has(family)) return true;
-        }
-        return false;
-      })
-      .slice(0, RESULT_LIMIT);
+    const matching = all.filter((p) => {
+      for (const family of productColorFamilies(p.colors)) {
+        if (wanted.has(family)) return true;
+      }
+      return false;
+    });
+    return matching.length >= MIN_COLOR_CANDIDATES ? matching : all;
   }, [data, canSearch, photoColors]);
+
+  // Colour mode only: rank the colour-narrowed candidates by similarity.
+  useEffect(() => {
+    if (!photo || photo.mode !== "colour" || candidates.length === 0) {
+      setVisual(null);
+      return;
+    }
+    const run = ++rankRun.current;
+    setVisual({ scores: new Map(), done: 0, total: candidates.length, running: true });
+    resolveThumbnails(candidates.map((p) => p.id))
+      .then((thumbs) =>
+        rankBySimilarity(
+          photo.canvas,
+          candidates
+            .map((p) => ({ id: p.id, imageUrl: thumbs[p.id] || p.images[0] }))
+            .filter((c) => !!c.imageUrl),
+          (done, total) => {
+            if (run === rankRun.current) setVisual((v) => (v ? { ...v, done, total } : v));
+          },
+        ),
+      )
+      .then((ranked) => {
+        if (run !== rankRun.current) return;
+        setVisual({
+          scores: new Map(ranked.filter((r) => r.score > 0).map((r) => [r.id, r.score])),
+          done: ranked.length,
+          total: ranked.length,
+          running: false,
+        });
+      })
+      .catch((err) => {
+        console.warn("Visual ranking unavailable, showing colour matches:", err);
+        if (run === rankRun.current) setVisual(null);
+      });
+  }, [photo, candidates]);
+
+  const products = useMemo(() => {
+    if (!photo) return candidates.slice(0, RESULT_LIMIT);
+    // Whole-catalogue matches, unless the shopper typed something — then text wins.
+    if (photo.mode === "catalog") return hasTextQuery ? candidates.slice(0, RESULT_LIMIT) : photo.matches.slice(0, CATALOG_RESULT_LIMIT);
+    if (!visual || visual.scores.size === 0) return candidates.slice(0, RESULT_LIMIT);
+    return [...candidates]
+      .map((p, index) => ({ p, index, score: visual.scores.get(p.id) ?? -1 }))
+      .sort((a, b) => b.score - a.score || a.index - b.index)
+      .slice(0, RESULT_LIMIT)
+      .map(({ p }) => p);
+  }, [photo, candidates, visual, hasTextQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -89,12 +170,35 @@ const SearchModal = () => {
   const handleFile = useCallback(async (file: File) => {
     setPhotoError(null);
     setIsAnalysing(true);
+    preloadVisualSearch(); // start fetching the model while colours are extracted
     const previewUrl = URL.createObjectURL(file);
     try {
-      const result = await searchByImage(file);
+      const [result, index] = await Promise.all([searchByImage(file), loadCatalogIndex()]);
+
+      // Whole-catalogue match when the store has built its image index.
+      let matches: Product[] = [];
+      let mode: PhotoState["mode"] = "colour";
+      if (index) {
+        try {
+          const top = await searchCatalog(result.canvas, index, 24);
+          matches = await fetchProductCards<Product>(top.map((m) => m.id));
+          if (matches.length > 0) mode = "catalog";
+        } catch (err) {
+          console.warn("Catalogue photo search failed, falling back to colour matching:", err);
+        }
+      }
+
       setPhoto((prev) => {
         if (prev) URL.revokeObjectURL(prev.previewUrl);
-        return { previewUrl, detected: result.colors, palette: result.palette, selected: result.colors };
+        return {
+          previewUrl,
+          mode,
+          matches,
+          detected: result.colors,
+          palette: result.palette,
+          selected: mode === "catalog" ? [] : result.colors,
+          canvas: result.canvas,
+        };
       });
     } catch (err) {
       URL.revokeObjectURL(previewUrl);
@@ -150,6 +254,7 @@ const SearchModal = () => {
     : photoColors.length > 0
       ? photoColors.join(" & ")
       : "your photo";
+  const showViewAll = products.length > 0 && !(photo?.mode === "catalog" && !hasTextQuery);
 
   return (
     <div className="fixed inset-0 z-50">
@@ -208,6 +313,15 @@ const SearchModal = () => {
                 className="h-20 w-16 object-cover rounded-sm bg-muted flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
+                {photo.mode === "catalog" ? (
+                  <>
+                    <p className="text-sm font-semibold">Products that look like your photo</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Matched against every product in the store. Type above to search by name instead.
+                    </p>
+                  </>
+                ) : (
+                <>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold">Colours in your photo</p>
                   <span className="flex items-center gap-0.5">
@@ -245,8 +359,19 @@ const SearchModal = () => {
                   })}
                 </div>
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  Type above to narrow by style, e.g. "kurta" or "saree".
+                  {visual?.running ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <CircleNotch className="h-3 w-3 animate-spin" />
+                      Finding similar styles… {visual.done}/{visual.total}
+                    </span>
+                  ) : visual && visual.scores.size > 0 ? (
+                    "Sorted by how closely they match your photo. Type above to narrow by style."
+                  ) : (
+                    'Type above to narrow by style, e.g. "kurta" or "saree".'
+                  )}
                 </p>
+                </>
+                )}
               </div>
               <button
                 type="button"
@@ -324,7 +449,7 @@ const SearchModal = () => {
             {isAnalysing ? (
               <div className="flex flex-col items-center justify-center gap-3 py-8 text-muted-foreground">
                 <CircleNotch className="h-8 w-8 animate-spin" />
-                <p className="text-sm">Picking out colours…</p>
+                <p className="text-sm">Finding similar products…</p>
               </div>
             ) : !canSearch ? (
               <p className="text-center text-muted-foreground py-8">
@@ -368,8 +493,8 @@ const SearchModal = () => {
             )}
           </div>
 
-          {/* View All Results */}
-          {products.length > 0 && (
+          {/* View All Results — not for catalogue photo matches, which have no list page */}
+          {showViewAll && (
             <div className="mt-6 text-center border-t border-border pt-4">
               <Link
                 to={viewAllHref}

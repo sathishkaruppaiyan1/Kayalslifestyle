@@ -2,12 +2,14 @@ import { getPalette } from "colorthief";
 import { COLOR_FAMILIES } from "@/lib/colorFamilies";
 
 /**
- * Photo search — runs entirely in the browser, nothing is uploaded.
+ * Photo search, stage 1 — runs entirely in the browser, nothing is uploaded.
  *
  * Color Thief quantises the photo into a small palette; each palette entry is
  * classified into one of the store's colour families (see colorFamilies.ts)
  * by hue / saturation / lightness, and the resulting families drive the same
- * `?color=` filter the collection sidebar uses.
+ * `?color=` filter the collection sidebar uses. That narrows the catalogue to
+ * a few dozen candidates, which stage 2 (visualSearch.ts) then ranks by how
+ * much they actually look like the photo.
  */
 
 export interface ImageSearchResult {
@@ -15,6 +17,8 @@ export interface ImageSearchResult {
   colors: string[];
   /** The raw palette hexes that produced them, for the swatch strip. */
   palette: string[];
+  /** The downsized photo, ready for the similarity model. */
+  canvas: HTMLCanvasElement;
 }
 
 const MAX_EDGE = 600;
@@ -126,5 +130,5 @@ export const searchByImage = async (file: File): Promise<ImageSearchResult> => {
     throw new Error("Couldn't match that photo to a colour we stock");
   }
 
-  return { colors, palette: hexes.slice(0, 5) };
+  return { colors, palette: hexes.slice(0, 5), canvas };
 };

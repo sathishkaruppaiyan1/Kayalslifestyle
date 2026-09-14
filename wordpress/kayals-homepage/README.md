@@ -16,6 +16,28 @@ Sections you can add, reorder (drag), rename, and switch on/off:
 
 The storefront reads the result from `GET /wp-json/kayals/v1/homepage`.
 
+## Photo search ("search by photo" on the storefront)
+
+Shoppers upload a photo and get look-alike products from the **whole
+catalogue**. That works off an **image index** — a fingerprint of every
+product image — which you build from this plugin:
+
+1. **Homepage → Photo search → Build index.** It runs in your browser (about
+   1–3 minutes for ~700 products) and shows progress. Keep the tab in front.
+2. After adding products, click **Update index (new products only)** — a few
+   seconds.
+
+The index is stored at `wp-content/uploads/kayals-homepage/image-index.json`
+(~1 MB). The storefront reads `GET /wp-json/kayals/v1/image-index` for the
+current version and downloads the file through
+`GET /wp-json/kayals/v1/image-index/file` (REST, so it works from a storefront
+on a different domain — the static uploads path has no CORS headers);
+`GET /wp-json/kayals/v1/products?ids=…` returns the matched products in order.
+Until the index is built, the storefront falls back to colour matching.
+
+Other helpers: `GET /wp-json/kayals/v1/thumbs?ids=…` (medium-size images) and
+a CORS header written once to `wp-content/uploads/.htaccess`.
+
 ## Install
 
 1. Zip this folder (`kayals-homepage/`) and upload it via **Plugins → Add New → Upload Plugin**, or copy it to `wp-content/plugins/kayals-homepage/`.

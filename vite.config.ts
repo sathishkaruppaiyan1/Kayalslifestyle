@@ -19,7 +19,15 @@ export default defineConfig(({ mode }) => ({
             console.log('Proxy error:', err);
           });
         },
-      }
+      },
+      // Dev only: photo search reads product image pixels, which the browser
+      // allows only same-origin. In production storefront and WordPress share
+      // kayalslifestyle.com; locally this proxy stands in for that.
+      '/__img': {
+        target: 'https://kayalslifestyle.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/__img/, ''),
+      },
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),

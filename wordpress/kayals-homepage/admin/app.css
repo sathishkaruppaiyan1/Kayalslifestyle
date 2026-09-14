@@ -114,3 +114,8 @@
 .hp-heading { font-size: 15px; margin: 22px 0 8px; }
 .hp-topbar .hp-section-head { cursor: default; }
 .hp-title-static { flex: 1; font-weight: 600; }
+
+.hp-index-status { margin: 4px 0 8px; font-weight: 600; }
+.hp-progress { height: 8px; background: #dcdcde; border-radius: 4px; overflow: hidden; margin: 0 0 10px; max-width: 520px; }
+.hp-progress-bar { height: 100%; width: 0; background: #2271b1; transition: width .3s; }
+.hp-index-actions { display: flex; gap: 8px; flex-wrap: wrap; }

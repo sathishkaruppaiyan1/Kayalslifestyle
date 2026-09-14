@@ -597,12 +597,209 @@
     return card;
   }
 
+
+  /* ---------------------------------------------------------------- */
+  /* Photo-search index                                                 */
+  /*                                                                    */
+  /* Fingerprints every product image with MobileNet (TensorFlow.js,    */
+  /* loaded on this page) and saves the result through the plugin. The  */
+  /* storefront downloads that file and compares a shopper's photo      */
+  /* against all of it locally — no server, no per-search cost.         */
+  /* ---------------------------------------------------------------- */
+
+  var indexStatus = KayalsHP.index || { built: false, count: 0, catalog: 0 };
+  var indexing = false;
+
+  function quantize(vec) {
+    // unit vector → int8 (×127); good enough for ranking, 4× smaller than float32
+    var out = new Int8Array(vec.length);
+    for (var i = 0; i < vec.length; i++) out[i] = Math.max(-127, Math.min(127, Math.round(vec[i] * 127)));
+    return out;
+  }
+
+  function normalize(vec) {
+    var sum = 0;
+    for (var i = 0; i < vec.length; i++) sum += vec[i] * vec[i];
+    var norm = Math.sqrt(sum) || 1;
+    var out = new Float32Array(vec.length);
+    for (var j = 0; j < vec.length; j++) out[j] = vec[j] / norm;
+    return out;
+  }
+
+  function bytesToBase64(bytes) {
+    var bin = '';
+    for (var i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(bin);
+  }
+
+  function base64ToBytes(b64) {
+    var bin = atob(b64);
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function loadImg(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      var timer = setTimeout(function () { img.src = ''; reject(new Error('image timed out: ' + url)); }, 30000);
+      img.crossOrigin = 'anonymous';
+      img.onload = function () { clearTimeout(timer); resolve(img); };
+      img.onerror = function () { clearTimeout(timer); reject(new Error('image failed: ' + url)); };
+      img.src = url;
+    });
+  }
+
+  async function buildIndex(rebuildAll, ui) {
+    if (indexing) return;
+    if (typeof window.mobilenet === 'undefined' || typeof window.tf === 'undefined') {
+      ui.status('TensorFlow.js did not load — check that this admin page can reach cdn.jsdelivr.net.');
+      return;
+    }
+    indexing = true;
+    ui.busy(true);
+    try {
+      ui.status('Loading catalogue…');
+      var catalog = await fetch(KayalsHP.restBase + '/catalog', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+      var products = catalog.products || [];
+
+      // Keep fingerprints we already have unless asked to redo everything.
+      var existing = {};
+      if (!rebuildAll && indexStatus.built && indexStatus.url) {
+        try {
+          var prev = await fetch(indexStatus.url, { cache: 'no-store' }).then(function (r) { return r.json(); });
+          if (prev && prev.model === indexStatus.model && Array.isArray(prev.ids)) {
+            var bytes = base64ToBytes(prev.data);
+            prev.ids.forEach(function (id, i) {
+              existing[id] = bytes.subarray(i * prev.dim, (i + 1) * prev.dim);
+            });
+          }
+        } catch (e) { /* start fresh */ }
+      }
+
+      var todo = products.filter(function (p) { return !existing[p.id]; });
+      ui.status('Loading model… (' + todo.length + ' of ' + products.length + ' products to fingerprint)');
+      var model = await window.mobilenet.load({ version: 2, alpha: 0.5 });
+
+      var fresh = {};
+      var failedItems = [];
+      async function fingerprint(list, label) {
+        var done = 0, cursor = 0;
+        async function worker() {
+          while (cursor < list.length) {
+            var p = list[cursor++];
+            try {
+              var img = await loadImg(p.image);
+              var t = model.infer(img, true);
+              var data = await t.data();
+              t.dispose();
+              fresh[p.id] = quantize(normalize(data));
+            } catch (e) {
+              failedItems.push(p);
+            }
+            done++;
+            if (done % 5 === 0 || done === list.length) {
+              ui.progress(done, list.length);
+              ui.status(label + ' ' + done + ' / ' + list.length + (document.visibilityState === 'hidden' ? ' — keep this tab visible, browsers pause the work in background tabs' : ''));
+            }
+          }
+        }
+        await Promise.all([worker(), worker(), worker()]);
+      }
+      await fingerprint(todo, 'Fingerprinting products…');
+      // Anything that failed (slow image, tab briefly in the background) gets one more go.
+      if (failedItems.length) {
+        var retry = failedItems.splice(0);
+        await fingerprint(retry, 'Retrying ' + retry.length + ' skipped image(s)…');
+      }
+      var failed = failedItems.length;
+
+      // Assemble in catalogue order; products that failed both times are left out.
+      var ids = [];
+      var chunks = [];
+      products.forEach(function (p) {
+        var v = fresh[p.id] || existing[p.id];
+        if (v) { ids.push(p.id); chunks.push(v); }
+      });
+      var dim = indexStatus.dim || 1280;
+      var all = new Uint8Array(ids.length * dim);
+      chunks.forEach(function (v, i) { all.set(new Uint8Array(v.buffer, v.byteOffset, v.byteLength), i * dim); });
+
+      ui.status('Saving index (' + ids.length + ' products)…');
+      var res = await $.post(KayalsHP.ajaxUrl, {
+        action: 'kayals_hp_save_index',
+        nonce: KayalsHP.nonce,
+        index: JSON.stringify({ ids: ids, data: bytesToBase64(all) }),
+      });
+      if (!res || !res.success) throw new Error((res && res.data) || 'save failed');
+      indexStatus = res.data;
+      ui.status('Done — ' + ids.length + ' products indexed' + (failed ? ' (' + failed + ' skipped: image could not be read)' : '') + '. Photo search on the storefront now covers them.');
+      ui.progress(1, 1);
+      ui.refresh();
+    } catch (err) {
+      ui.status('Failed: ' + (err && err.message ? err.message : err));
+    } finally {
+      indexing = false;
+      ui.busy(false);
+    }
+  }
+
+  function renderIndexPanel() {
+    var st = indexStatus;
+    var missing = Math.max(0, (st.catalog || 0) - (st.count || 0));
+    var summary = st.built
+      ? st.count + ' of ' + st.catalog + ' products indexed' + (st.built_at ? ' · last built ' + new Date(st.built_at).toLocaleString() : '') + (missing > 0 ? ' · ' + missing + ' new product(s) not yet indexed' : '')
+      : 'Not built yet — photo search on the storefront falls back to colour matching until you build it.';
+
+    var statusLine = el('p', { class: 'hp-index-status', text: summary });
+    var bar = el('div', { class: 'hp-progress' }, [el('div', { class: 'hp-progress-bar' })]);
+    bar.hidden = true;
+
+    var ui = {
+      status: function (t) { statusLine.textContent = t; },
+      progress: function (d, total) { bar.hidden = false; bar.firstChild.style.width = Math.round((d / Math.max(1, total)) * 100) + '%'; },
+      busy: function (b) { updateBtn.disabled = b; rebuildBtn.disabled = b; },
+      refresh: function () { setTimeout(render, 1500); },
+    };
+
+    var updateBtn = el('button', {
+      type: 'button', class: 'button button-primary',
+      text: st.built ? 'Update index (new products only)' : 'Build index',
+      onclick: function () { buildIndex(false, ui); },
+    });
+    var rebuildBtn = el('button', {
+      type: 'button', class: 'button',
+      text: 'Rebuild everything',
+      onclick: function () {
+        if (window.confirm('Re-fingerprint all ' + st.catalog + ' products? This takes a few minutes.')) buildIndex(true, ui);
+      },
+    });
+    if (!st.built) rebuildBtn.hidden = true;
+
+    return el('div', { class: 'hp-section hp-topbar is-open' }, [
+      el('div', { class: 'hp-section-head' }, [
+        el('span', { class: 'hp-type', text: 'Photo search' }),
+        el('strong', { class: 'hp-title-static', text: 'Image index for "search by photo"' }),
+      ]),
+      el('div', { class: 'hp-section-body' }, [
+        el('p', { class: 'description', text: 'Shoppers can upload a photo and get look-alike products. That needs a fingerprint of every product image, computed here in your browser (about 1–3 minutes for the whole catalogue, a few seconds for new products). Keep this tab in front while it runs. Run "Update" after adding products.' }),
+        statusLine,
+        bar,
+        el('div', { class: 'hp-index-actions' }, [updateBtn, rebuildBtn]),
+      ]),
+    ]);
+  }
+
   function render() {
     var root = document.getElementById('kayals-hp-app');
     root.innerHTML = '';
 
     root.appendChild(el('h2', { class: 'hp-heading', text: 'Top bar' }));
     root.appendChild(renderTopbar());
+    root.appendChild(el('h2', { class: 'hp-heading', text: 'Photo search' }));
+    root.appendChild(renderIndexPanel());
     root.appendChild(el('h2', { class: 'hp-heading', text: 'Homepage sections' }));
 
     var list = el('div', { id: 'hp-sections' });
