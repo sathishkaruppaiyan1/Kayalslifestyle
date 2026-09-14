@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => ({
       // allows only same-origin. In production storefront and WordPress share
       // kayalslifestyle.com; locally this proxy stands in for that.
       '/__img': {
-        target: 'https://kayalslifestyle.com',
+        target: 'https://app.kayalslifestyle.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/__img/, ''),
       },

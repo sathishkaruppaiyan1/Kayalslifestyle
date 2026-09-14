@@ -118,7 +118,7 @@ const loadImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const img = new Image();
     // Needed for canvas/tensor access when the image is on another origin.
-    // Same-origin (storefront + WordPress on kayalslifestyle.com) needs nothing.
+    // (the storefront and WordPress are on different domains, so this matters).
     img.crossOrigin = "anonymous";
     img.decoding = "async";
     img.onload = () => resolve(img);

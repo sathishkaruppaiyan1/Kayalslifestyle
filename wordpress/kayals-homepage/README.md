@@ -38,6 +38,22 @@ Until the index is built, the storefront falls back to colour matching.
 Other helpers: `GET /wp-json/kayals/v1/thumbs?ids=…` (medium-size images) and
 a CORS header written once to `wp-content/uploads/.htaccess`.
 
+## Redirects (WordPress as back office)
+
+With WordPress on `app.kayalslifestyle.com` and the storefront on
+`kayalslifestyle.com`, `redirects.php` sends public WordPress URLs away:
+
+| Opened on app.… | Goes to |
+| --- | --- |
+| `/product/<slug>/` | `kayalslifestyle.com/product/<id>` |
+| `/product-category/<slug>/` | `kayalslifestyle.com/collections/<slug>` |
+| `/shop/`, tags, search | `kayalslifestyle.com/collections/all` |
+| home or any other page | `/wp-admin` (login page if logged out) |
+
+Untouched: `/wp-admin`, `/wp-login.php`, `/wp-json/*`, `/wp-content/*`,
+admin-ajax, cron. To change the storefront address add
+`define( 'KAYALS_STOREFRONT_URL', 'https://…' );` to `wp-config.php`.
+
 ## Install
 
 1. Zip this folder (`kayals-homepage/`) and upload it via **Plugins → Add New → Upload Plugin**, or copy it to `wp-content/plugins/kayals-homepage/`.

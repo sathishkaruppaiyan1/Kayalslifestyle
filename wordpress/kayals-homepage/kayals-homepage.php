@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Kayals Homepage Builder
  * Description: Build the storefront homepage from WP admin — top bar messages, category strip, hero banners, reels, product rails (Hot Sellers, Featured Picks…), browse-by-category tabs and customer review images. Drag to reorder; the React storefront reads everything from /wp-json/kayals/v1/homepage.
- * Version:     1.4.1
+ * Version:     1.4.2
  * Author:      Kayals Lifestyle
  * Requires Plugins: woocommerce
  * License:     GPL-2.0-or-later
@@ -18,7 +18,7 @@ final class Kayals_Homepage {
 	const TRANSIENT  = 'kayals_homepage_public';
 	const CAP        = 'manage_woocommerce';
 	const REST_NS    = 'kayals/v1';
-	const VERSION    = '1.4.1';
+	const VERSION    = '1.4.2';
 
 	/** Section types and the fields each one carries. Anything else is dropped on save. */
 	const TYPES = array( 'category_strip', 'hero', 'reels', 'products', 'category_tabs', 'reviews' );
@@ -876,3 +876,6 @@ HTACCESS;
 }
 
 Kayals_Homepage::init();
+
+// Public WordPress URLs → storefront / admin (see the file for the rules).
+require_once __DIR__ . '/redirects.php';
