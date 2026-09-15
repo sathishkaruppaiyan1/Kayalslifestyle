@@ -23,7 +23,7 @@ const reviewImages = [
 ];
 
 const INSTAGRAM_REVIEWS_URL =
-    "https://www.instagram.com/kayalslifestyle_boutique?stkn=NWozN2g2cWU3cDEz";
+    "https://www.instagram.com/kayalslifestylefamily?stkn=bjk3NGJwM3kwMmo4";
 
 interface ReviewsSliderProps {
     /** Images from the homepage builder; omit to use the bundled screenshots. */
@@ -31,7 +31,7 @@ interface ReviewsSliderProps {
     title?: string;
 }
 
-const ReviewsSlider = ({ images = reviewImages, title = "What Our Customers Say" }: ReviewsSliderProps = {}) => {
+const ReviewsSlider = ({ images = reviewImages, title = "kayalslifestyle Family Happy Customers" }: ReviewsSliderProps = {}) => {
     const autoplay = useCarouselAutoplay(4000);
 
     if (images.length === 0) return null;

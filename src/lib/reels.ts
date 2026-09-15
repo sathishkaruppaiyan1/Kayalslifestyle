@@ -4,14 +4,14 @@
  * ─── HOW TO EDIT ────────────────────────────────────────────────────────────
  * Each entry is one card. Replace the starter entries below with your own:
  *
- *   title  short caption shown on the card
- *   thumb  poster image. Drop a portrait (9:16) JPG into public/reels/ and
- *          reference it as "/reels/your-file.jpg". A product or category
- *          image URL also works.
- *   href   the Instagram reel link. Tapping the card opens it in a new tab.
- *   shop   where SHOP NOW goes — "/product/<id>" or "/collections/<slug>".
- *   video  OPTIONAL. A direct .mp4 URL; if present it plays muted on hover.
- *          Leave it out to show just the poster image.
+ *   title  short caption shown next to the product image
+ *   thumb  product image shown in the strip at the bottom of the card.
+ *          Tapping it (or the caption) goes to `shop`.
+ *   href   the Instagram reel link. Tapping the video opens it in a new tab.
+ *   shop   where the product image / caption goes — "/product/<id>" or
+ *          "/collections/<slug>".
+ *   video  a direct .mp4 URL. It autoplays muted and looped as the card
+ *          background. If left out, `thumb` fills the card instead.
  *
  * Set REELS to an empty array and the whole section stops rendering.
  * ────────────────────────────────────────────────────────────────────────────

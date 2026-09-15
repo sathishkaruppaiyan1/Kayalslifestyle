@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Kayals Homepage Builder
  * Description: Build the storefront homepage from WP admin — top bar messages, category strip, hero banners, reels, product rails (Hot Sellers, Featured Picks…), browse-by-category tabs and customer review images. Drag to reorder; the React storefront reads everything from /wp-json/kayals/v1/homepage.
- * Version:     1.4.2
+ * Version:     1.5.1
  * Author:      Kayals Lifestyle
  * Requires Plugins: woocommerce
  * License:     GPL-2.0-or-later
@@ -18,7 +18,7 @@ final class Kayals_Homepage {
 	const TRANSIENT  = 'kayals_homepage_public';
 	const CAP        = 'manage_woocommerce';
 	const REST_NS    = 'kayals/v1';
-	const VERSION    = '1.4.2';
+	const VERSION    = '1.5.1';
 
 	/** Section types and the fields each one carries. Anything else is dropped on save. */
 	const TYPES = array( 'category_strip', 'hero', 'reels', 'products', 'category_tabs', 'reviews' );
@@ -31,6 +31,7 @@ final class Kayals_Homepage {
 		add_action( 'wp_ajax_kayals_hp_products_by_ids', array( __CLASS__, 'ajax_products_by_ids' ) );
 		add_action( 'wp_ajax_kayals_hp_save_index', array( __CLASS__, 'ajax_save_index' ) );
 		add_action( 'rest_api_init', array( __CLASS__, 'rest_routes' ) );
+		add_filter( 'rest_pre_serve_request', array( __CLASS__, 'rest_cors_headers' ), 20, 3 );
 		add_action( 'admin_init', array( __CLASS__, 'ensure_uploads_cors' ) );
 
 		// Any catalogue change can alter a rail, so drop the cached payload.
@@ -300,7 +301,7 @@ final class Kayals_Homepage {
 				'layout' => 'carousel', 'source' => 'category', 'category' => $trending ? (int) $trending->term_id : 0, 'limit' => 12, 'products' => array(), 'view_all' => '',
 			),
 			array( 'id' => 'tabs', 'type' => 'category_tabs', 'enabled' => true, 'title' => 'Browse by Category', 'items' => array() ),
-			array( 'id' => 'reviews', 'type' => 'reviews', 'enabled' => true, 'title' => 'What Our Customers Say', 'items' => array() ),
+			array( 'id' => 'reviews', 'type' => 'reviews', 'enabled' => true, 'title' => 'kayalslifestyle Family Happy Customers', 'items' => array() ),
 		);
 
 		return array( 'topbar' => self::default_topbar(), 'sections' => $sections );
@@ -362,12 +363,13 @@ final class Kayals_Homepage {
 				case 'reels':
 					$sec['items'] = array();
 					foreach ( $items as $i ) {
-						if ( ! is_array( $i ) || empty( $i['thumb'] ) ) {
+						// A reel needs a video or, failing that, a product image to fill the card.
+						if ( ! is_array( $i ) || ( empty( $i['thumb'] ) && empty( $i['video'] ) ) ) {
 							continue;
 						}
 						$sec['items'][] = array(
 							'title' => sanitize_text_field( $i['title'] ?? '' ),
-							'thumb' => esc_url_raw( $i['thumb'] ),
+							'thumb' => esc_url_raw( $i['thumb'] ?? '' ),
 							'href'  => esc_url_raw( $i['href'] ?? '' ),
 							'shop'  => sanitize_text_field( $i['shop'] ?? '' ),
 							'video' => esc_url_raw( $i['video'] ?? '' ),
@@ -496,6 +498,8 @@ final class Kayals_Homepage {
 			'price'  => html_entity_decode( wp_strip_all_tags( wc_price( (float) $p->get_price() ) ), ENT_QUOTES, 'UTF-8' ),
 			'status' => $p->get_status(),
 			'image'  => $image_id ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : '',
+			// Larger copy for places that display the product image itself (reel cards).
+			'image_large' => $image_id ? wp_get_attachment_image_url( $image_id, 'large' ) : '',
 		);
 	}
 
@@ -576,6 +580,25 @@ HTACCESS;
 			@file_put_contents( $file, $existing . $sep . $block );
 		}
 		update_option( 'kayals_hp_cors_version', self::VERSION, false );
+	}
+
+	/**
+	 * Our REST routes are public and never use cookies, and /homepage is sent
+	 * with a public Cache-Control so the CDN caches it. WordPress core echoes
+	 * the *requesting* origin into Access-Control-Allow-Origin, which the CDN
+	 * then caches and serves to every other origin (www vs non-www, localhost)
+	 * — and the browser blocks the response. Send a wildcard instead, and
+	 * mark the response as varying by Origin for any cache that respects it.
+	 *
+	 * Runs after core's rest_send_cors_headers (priority 10) so ours wins.
+	 */
+	public static function rest_cors_headers( $served, $result, $request ) {
+		if ( $request instanceof WP_REST_Request && 0 === strpos( $request->get_route(), '/' . self::REST_NS . '/' ) ) {
+			header( 'Access-Control-Allow-Origin: *' );
+			header_remove( 'Access-Control-Allow-Credentials' );
+			header( 'Vary: Origin', false );
+		}
+		return $served;
 	}
 
 	public static function rest_homepage() {

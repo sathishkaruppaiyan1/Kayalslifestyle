@@ -57,6 +57,9 @@
 .hp-thumb { width: 96px; height: 54px; object-fit: cover; border-radius: 3px; border: 1px solid #dcdcde; background: #f6f7f7; }
 .is-portrait .hp-thumb { width: 54px; height: 96px; }
 .hp-clear { color: #b32d2e; }
+.hp-video-preview { width: 54px; height: 96px; object-fit: cover; border-radius: 3px; border: 1px solid #dcdcde; background: #000; }
+.hp-video-field input { margin-top: 4px; }
+.hp-product-field .hp-result.is-chosen { border: 1px solid #c3c4c7; border-radius: 3px; background: #f6f7f7; cursor: default; margin-bottom: 4px; }
 
 .hp-items { margin-bottom: 10px; }
 .hp-item {

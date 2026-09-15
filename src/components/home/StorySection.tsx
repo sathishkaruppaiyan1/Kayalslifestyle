@@ -34,7 +34,7 @@ const StorySection = () => {
             alt="Kayal and Madhu, Founders of Kayalslifestyle Boutique"
             loading="lazy"
             decoding="async"
-            className="w-[235px] h-[300px] lg:w-full lg:h-auto lg:max-w-[480px] lg:aspect-[4/5] mx-auto rounded-lg object-cover object-[center_top] shadow-card transition-transform duration-300 hover:scale-[1.02]"
+            className="w-full aspect-[4/3] object-[center_28%] lg:h-auto lg:max-w-[480px] lg:aspect-[4/5] lg:object-[center_top] mx-auto rounded-lg object-cover shadow-card transition-transform duration-300 hover:scale-[1.02]"
           />
           <figcaption className="mt-4">
             <p className="text-foreground font-semibold text-base lg:text-lg">

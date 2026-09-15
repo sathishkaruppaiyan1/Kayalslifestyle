@@ -131,7 +131,7 @@ const renderSection = (section: HomepageSection) => {
         <Reveal>
           <ReviewsSlider
             images={section.items.map((r, i) => ({ src: r.image, alt: r.caption || `Customer review ${i + 1}` }))}
-            title={section.title || "What Our Customers Say"}
+            title={section.title || "kayalslifestyle Family Happy Customers"}
           />
         </Reveal>
       );

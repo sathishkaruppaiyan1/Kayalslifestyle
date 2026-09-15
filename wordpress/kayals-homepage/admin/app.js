@@ -27,7 +27,7 @@
   var TYPE_HELP = {
     category_strip: 'Circular category bubbles above the hero. Leave the list empty to show every top-level category.',
     hero: 'Full-width slides. Each slide takes TWO images: a wide one for desktop/tablet and a taller (portrait) one for phones. Leave the phone image empty and the wide image is used on phones too.',
-    reels: 'Portrait cards linking to Instagram reels, each with a SHOP NOW destination.',
+    reels: 'Portrait cards where the reel video autoplays. Pick the video, then search for the product — its image and caption sit at the bottom of the card and link to the product page.',
     products: 'A row of products. Pick them by hand and drag to order — leave the list empty and it shows the newest products automatically. Or point it at a category. Rename it to anything: Hot Sellers, Featured Picks, Wedding Edit…',
     category_tabs: 'Tabbed rail — one tab per category, showing that category\'s products. Leave the list empty to show every category.',
     reviews: 'Screenshots or photos of customer reviews. Add as many as you like.',
@@ -156,6 +156,145 @@
     ]);
   }
 
+  function pickVideo(opts, cb) {
+    var frame = wp.media({
+      title: opts.title || 'Choose video',
+      button: { text: 'Use this video' },
+      multiple: false,
+      library: { type: 'video' },
+    });
+    frame.on('select', function () {
+      var a = frame.state().get('selection').first().toJSON();
+      cb(a.url);
+    });
+    frame.open();
+  }
+
+  /** Video from the media library (or a pasted .mp4 URL) with a small preview. */
+  function videoField(label, obj, key) {
+    var preview = el('video', { class: 'hp-video-preview', src: obj[key] || '', muted: 'muted', playsinline: 'playsinline', preload: 'metadata' });
+    preview.hidden = !obj[key];
+    var url = el('input', {
+      type: 'url',
+      class: 'regular-text',
+      value: obj[key] || '',
+      placeholder: 'or paste an .mp4 URL',
+      oninput: function () {
+        obj[key] = this.value.trim();
+        preview.src = obj[key];
+        preview.hidden = !obj[key];
+        button.textContent = obj[key] ? 'Change' : 'Choose video';
+        clear.hidden = !obj[key];
+        markDirty();
+      },
+    });
+    var button = el('button', {
+      type: 'button',
+      class: 'button',
+      text: obj[key] ? 'Change' : 'Choose video',
+      onclick: function () {
+        pickVideo({ title: label }, function (src) {
+          obj[key] = src;
+          url.value = src;
+          preview.src = src;
+          preview.hidden = false;
+          button.textContent = 'Change';
+          clear.hidden = false;
+          markDirty();
+        });
+      },
+    });
+    var clear = el('button', {
+      type: 'button',
+      class: 'button-link hp-clear',
+      text: 'Remove',
+      onclick: function () {
+        obj[key] = '';
+        url.value = '';
+        preview.hidden = true;
+        button.textContent = 'Choose video';
+        clear.hidden = true;
+        markDirty();
+      },
+    });
+    clear.hidden = !obj[key];
+    return el('div', { class: 'hp-field hp-video-field' }, [
+      el('span', { text: label }),
+      el('div', { class: 'hp-image-controls' }, [preview, button, clear]),
+      url,
+    ]);
+  }
+
+  /**
+   * Product search for a reel. Picking a product points SHOP NOW at
+   * /product/<id>, fills in the product image, and uses the product name as
+   * the caption when none was typed.
+   */
+  function productField(item) {
+    var wrap = el('div', { class: 'hp-field hp-product-field' }, [el('span', { text: 'Product (search to pick)' })]);
+
+    var m = /^\/product\/(\d+)$/.exec(item.shop || '');
+    if (m) {
+      var meta = productMeta[parseInt(m[1], 10)];
+      wrap.appendChild(
+        el('div', { class: 'hp-result is-chosen' }, [
+          item.thumb ? el('img', { src: item.thumb }) : el('span', { class: 'hp-product-thumb is-empty' }),
+          el('span', { text: meta ? meta.name : 'Product #' + m[1] }),
+          meta ? el('span', { class: 'hp-price', text: meta.price }) : null,
+        ])
+      );
+    }
+
+    var results = el('div', { class: 'hp-results' });
+    results.hidden = true;
+    var timer = null;
+    var search = el('input', {
+      type: 'search',
+      class: 'regular-text',
+      placeholder: m ? 'Search to change product…' : 'Search products…',
+      oninput: function () {
+        var q = this.value.trim();
+        clearTimeout(timer);
+        if (q.length < 2) {
+          results.hidden = true;
+          return;
+        }
+        timer = setTimeout(function () {
+          $.getJSON(KayalsHP.ajaxUrl, { action: 'kayals_hp_search_products', nonce: KayalsHP.nonce, q: q }, function (res) {
+            results.innerHTML = '';
+            var items = (res && res.data) || [];
+            if (items.length === 0) {
+              results.appendChild(el('p', { class: 'description', text: 'No products match.' }));
+            }
+            items.forEach(function (p) {
+              productMeta[p.id] = p;
+              results.appendChild(
+                el('button', {
+                  type: 'button',
+                  class: 'hp-result',
+                  onclick: function () {
+                    item.shop = '/product/' + p.id;
+                    item.thumb = p.image_large || p.image || item.thumb;
+                    if (!item.title) item.title = p.name;
+                    markDirty();
+                    render();
+                  },
+                }, [
+                  p.image ? el('img', { src: p.image }) : el('span', { class: 'hp-product-thumb is-empty' }),
+                  el('span', { text: p.name }),
+                  el('span', { class: 'hp-price', text: p.price }),
+                ])
+              );
+            });
+            results.hidden = false;
+          });
+        }, 250);
+      },
+    });
+    wrap.appendChild(el('div', { class: 'hp-search' }, [search, results]));
+    return wrap;
+  }
+
   /** Sortable list of item rows; `renderRow(item, index)` returns the row's body. */
   function itemList(sec, renderRow, opts) {
     var list = el('div', { class: 'hp-items' });
@@ -276,11 +415,12 @@
       sec,
       function (item) {
         return el('div', { class: 'hp-grid' }, [
-          imageField('Poster (9:16)', item, 'thumb', { portrait: true }),
+          videoField('Reel video (autoplays)', item, 'video'),
+          productField(item),
           textField('Caption', item, 'title'),
-          textField('Instagram reel URL', item, 'href', { placeholder: 'https://www.instagram.com/reel/…' }),
           textField('SHOP NOW goes to', item, 'shop', { placeholder: '/product/123 or /collections/slug' }),
-          textField('Video .mp4 URL (optional)', item, 'video'),
+          imageField('Product image', item, 'thumb', { portrait: true }),
+          textField('Instagram reel URL (optional)', item, 'href', { placeholder: 'https://www.instagram.com/reel/…' }),
         ]);
       },
       { emptyText: 'No reels yet — the section is hidden on the storefront until you add one.' }
@@ -290,8 +430,8 @@
       class: 'button',
       text: '+ Add reel',
       onclick: function () {
-        pickImage({ title: 'Choose reel poster' }, function (urls) {
-          sec.items.push({ title: '', thumb: urls[0], href: '', shop: '', video: '' });
+        pickVideo({ title: 'Choose reel video' }, function (src) {
+          sec.items.push({ title: '', thumb: '', href: '', shop: '', video: src });
           markDirty();
           render();
         });
@@ -898,6 +1038,12 @@
     var ids = [];
     state.sections.forEach(function (s) {
       if (s.type === 'products' && s.products) ids = ids.concat(s.products);
+      if (s.type === 'reels' && s.items) {
+        s.items.forEach(function (i) {
+          var m = /^\/product\/(\d+)$/.exec(i.shop || '');
+          if (m) ids.push(parseInt(m[1], 10));
+        });
+      }
     });
     if (ids.length === 0) {
       render();
