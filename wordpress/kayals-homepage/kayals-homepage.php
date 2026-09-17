@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Kayals Homepage Builder
- * Description: Build the storefront homepage from WP admin — top bar messages, category strip, hero banners, reels, product rails (Hot Sellers, Featured Picks…), browse-by-category tabs and customer review images. Drag to reorder; the React storefront reads everything from /wp-json/kayals/v1/homepage.
- * Version:     1.5.1
+ * Description: Build the storefront homepage from WP admin — top bar messages, category strip, hero banners, reels, product rails (Hot Sellers, Featured Picks…), browse-by-category tabs, customer review images and the founder story. Drag to reorder; the React storefront reads everything from /wp-json/kayals/v1/homepage.
+ * Version:     1.6.0
  * Author:      Kayals Lifestyle
  * Requires Plugins: woocommerce
  * License:     GPL-2.0-or-later
@@ -18,10 +18,10 @@ final class Kayals_Homepage {
 	const TRANSIENT  = 'kayals_homepage_public';
 	const CAP        = 'manage_woocommerce';
 	const REST_NS    = 'kayals/v1';
-	const VERSION    = '1.5.1';
+	const VERSION    = '1.6.0';
 
 	/** Section types and the fields each one carries. Anything else is dropped on save. */
-	const TYPES = array( 'category_strip', 'hero', 'reels', 'products', 'category_tabs', 'reviews' );
+	const TYPES = array( 'category_strip', 'hero', 'reels', 'products', 'category_tabs', 'reviews', 'story' );
 
 	public static function init() {
 		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
@@ -71,6 +71,9 @@ final class Kayals_Homepage {
 			return;
 		}
 		wp_enqueue_media();
+		// TinyMCE + Quicktags for the founder story's prose fields; the admin
+		// app builds those textareas at runtime and calls wp.editor.initialize.
+		wp_enqueue_editor();
 		wp_enqueue_style( 'kayals-hp', plugins_url( 'admin/app.css', __FILE__ ), array(), self::VERSION );
 		// Photo-search indexer: TensorFlow.js + MobileNet, loaded only on this admin page.
 		wp_enqueue_script( 'kayals-tfjs', 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js', array(), '4.22.0', true );
@@ -258,6 +261,21 @@ final class Kayals_Homepage {
 			unset( $sec['tag'] );
 		}
 		unset( $sec );
+
+		// The founder story arrived in 1.6. Sites that saved a layout before
+		// then have no story section, and the storefront falls back to its
+		// built-in copy — so hand them the same copy, editable.
+		$has_story = false;
+		foreach ( $config['sections'] as $existing ) {
+			if ( 'story' === ( $existing['type'] ?? '' ) ) {
+				$has_story = true;
+				break;
+			}
+		}
+		if ( ! $has_story ) {
+			$config['sections'][] = self::default_story_section();
+		}
+
 		return $config;
 	}
 
@@ -302,9 +320,85 @@ final class Kayals_Homepage {
 			),
 			array( 'id' => 'tabs', 'type' => 'category_tabs', 'enabled' => true, 'title' => 'Browse by Category', 'items' => array() ),
 			array( 'id' => 'reviews', 'type' => 'reviews', 'enabled' => true, 'title' => 'kayalslifestyle Family Happy Customers', 'items' => array() ),
+			self::default_story_section(),
 		);
 
 		return array( 'topbar' => self::default_topbar(), 'sections' => $sections );
+	}
+
+	/**
+	 * The founder story exactly as the storefront renders it today, so that
+	 * upgrading to 1.6 changes nothing on screen until someone edits it.
+	 *
+	 * `image` is left empty on purpose: the portrait currently ships with the
+	 * storefront as a static file, and the storefront keeps using that until
+	 * an admin picks one from the Media Library here.
+	 */
+	private static function default_story_section() {
+		$intro = <<<'HTML'
+<p>Hi, I'm Kayal, one of the founders of <strong>Kayalslifestyle Boutique</strong>, alongside my sister Madhu.</p>
+<p>From childhood, I have always loved dressing up. I was naturally drawn to clothes, colours, designs, fabrics, and the little details that make an outfit special. I was always curious about clothing and the world behind it.</p>
+<p>My Appa had a passion for tailoring and creating, but somewhere along the way, he had to let go of that passion.</p>
+<p>Watching that stayed with me.</p>
+<p>And somewhere inside, I made a strong promise to myself:</p>
+<blockquote><p>"The passion that my Appa had to leave behind… I will never let mine stop."</p></blockquote>
+<p>That belief became one of the strongest reasons I wanted to build something of my own.</p>
+<p>Somewhere along the way, that curiosity became a thought:</p>
+<blockquote><p>"One day, I want to start something of my own in clothing."</p></blockquote>
+<p>But I never imagined that this little thought would one day become Kayalslifestyle Boutique.</p>
+<h3>It All Started During COVID</h3>
+<p>In 2020, during the uncertainty of the COVID period, I decided to start Kayalslifestyle as a second source of income while I was working as an Accountant.</p>
+<p>It was a small beginning.</p>
+<p>It wasn't a huge business in the beginning.</p>
+<p>It was simply a small step towards something I had always wanted to do.</p>
+<p>I started with limited collections, learning everything along the way — understanding customers, selecting designs, handling orders, packing, communicating with customers, and slowly learning what women truly wanted.</p>
+<p>There was no perfect business plan.</p>
+<p>There was just faith, curiosity, and the courage to start.</p>
+<p>And that little beginning slowly started becoming something much bigger.</p>
+HTML;
+
+		$more = <<<'HTML'
+<h3>In 2024, my sister Madhu joined this journey</h3>
+<p>After completing her college, Madhu joined me in 2024 and chose to fully dedicate herself to this business, leaving behind further job opportunities.</p>
+<p>That was a very special turning point.</p>
+<p>What started as my little dream became our shared dream.</p>
+<p>Together, we started exploring more collections, understanding fashion trends, meeting suppliers, making decisions, handling challenges, and dreaming bigger.</p>
+<h3>It gave us an identity</h3>
+<p>Every order, every customer, every message, every repeat purchase, every new connection has been a small part of our journey.</p>
+<p>Over these 6 years, we have earned something we value more than numbers.</p>
+<h3>More Than a Boutique</h3>
+<p>Kayalslifestyle is not simply a clothing business for us.</p>
+<p>It is a reminder of where we came from.</p>
+<p>It has given us opportunities we once only dreamed about.</p>
+<p>It has given us confidence.</p>
+<p>It has given us an identity.</p>
+<p>And above all, it has taught us that you don't need to start big to build something meaningful.</p>
+<p><strong>You just need to start — and never stop believing in your journey.</strong></p>
+<h3>Six Years. Countless Lessons. One Beautiful Journey</h3>
+<p>When we look back, we don't just see orders and sales.</p>
+<p>We see people who trusted us.</p>
+<p>From our early customers to the many women who continue to shop with us, every order has been a small chapter in our story.</p>
+<p>We have been fortunate to send many shipments across India and abroad, receive wholesale orders, and create reselling opportunities for women entrepreneurs who wanted to start something of their own.</p>
+<p>Being able to become a small part of another woman's entrepreneurial journey is something we are truly proud of.</p>
+<h3>Kayalslifestyle is more than a business to us</h3>
+<p>It is our passion, our identity, our family legacy, and the journey that brought us to where we are today.</p>
+HTML;
+
+		return array(
+			'id'        => 'story',
+			'type'      => 'story',
+			'enabled'   => true,
+			'title'     => 'Our Story',
+			'subtitle'  => 'Two Sisters. One Dream. One Journey.',
+			'image'     => '',
+			'image_alt' => 'Kayal and Madhu, Founders of Kayalslifestyle Boutique',
+			'name'      => 'Kayal & Madhu',
+			'role'      => 'Founders, Kayalslifestyle Boutique',
+			'intro'     => $intro,
+			'more'      => $more,
+			'read_more' => 'Read Full Story',
+			'read_less' => 'Read Less',
+		);
 	}
 
 	private static function find_term_by_prefix( $taxonomy, $prefix ) {
@@ -388,6 +482,24 @@ final class Kayals_Homepage {
 							'caption' => sanitize_text_field( $i['caption'] ?? '' ),
 						);
 					}
+					break;
+
+				case 'story':
+					// Prose, so the two long fields keep the markup the editor
+					// produces. wp_kses_post is WordPress's own post-content
+					// filter: headings, emphasis and links survive, script and
+					// event attributes do not.
+					$sec['subtitle']  = sanitize_text_field( $s['subtitle'] ?? '' );
+					$sec['image']     = esc_url_raw( $s['image'] ?? '' );
+					$sec['image_alt'] = sanitize_text_field( $s['image_alt'] ?? '' );
+					$sec['name']      = sanitize_text_field( $s['name'] ?? '' );
+					$sec['role']      = sanitize_text_field( $s['role'] ?? '' );
+					$sec['intro']     = wp_kses_post( $s['intro'] ?? '' );
+					$sec['more']      = wp_kses_post( $s['more'] ?? '' );
+					$read_more        = sanitize_text_field( $s['read_more'] ?? '' );
+					$read_less        = sanitize_text_field( $s['read_less'] ?? '' );
+					$sec['read_more'] = '' !== $read_more ? $read_more : 'Read Full Story';
+					$sec['read_less'] = '' !== $read_less ? $read_less : 'Read Less';
 					break;
 
 				case 'products':
@@ -647,6 +759,12 @@ HTACCESS;
 					$pub['items'] = $s['items'];
 					break;
 
+				case 'story':
+					foreach ( array( 'subtitle', 'image', 'image_alt', 'name', 'role', 'intro', 'more', 'read_more', 'read_less' ) as $field ) {
+						$pub[ $field ] = $s[ $field ] ?? '';
+					}
+					break;
+
 				case 'products':
 					$ids                = self::resolve_product_ids( $s );
 					$pub['emoji']       = $s['emoji'];
@@ -670,6 +788,11 @@ HTACCESS;
 		return array(
 			'version'   => self::VERSION,
 			'generated' => gmdate( 'c' ),
+			// Disabled sections are dropped above, so their absence alone cannot
+			// tell the storefront whether a type is switched off or simply not
+			// supported by this version. This says which types we own, so the
+			// storefront knows when to stop using its own built-in copy.
+			'manages'   => array_values( self::TYPES ),
 			'topbar'    => $topbar,
 			'sections'  => $sections,
 		);

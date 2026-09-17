@@ -122,3 +122,11 @@
 .hp-progress { height: 8px; background: #dcdcde; border-radius: 4px; overflow: hidden; margin: 0 0 10px; max-width: 520px; }
 .hp-progress-bar { height: 100%; width: 0; background: #2271b1; transition: width .3s; }
 .hp-index-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Founder story: the two prose fields run the full width of the card, unlike
+   the short text inputs that share a row above them. */
+.hp-rte-field { display: block; margin-top: 14px; }
+.hp-rte-field > span { display: block; font-weight: 600; margin-bottom: 6px; }
+.hp-rte-field .wp-editor-container { border: 1px solid #8c8f94; }
+.hp-rte-field textarea.hp-rte { width: 100%; font-family: Consolas, Monaco, monospace; font-size: 12px; }
+.hp-story-note { margin: 4px 0 0; }

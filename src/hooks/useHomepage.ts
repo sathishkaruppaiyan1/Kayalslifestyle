@@ -34,6 +34,24 @@ export interface ReviewItem {
   caption: string;
 }
 
+/**
+ * Founder story (plugin ≥ 1.6). `intro` and `more` are HTML written in the
+ * WordPress editor and run through wp_kses_post server-side — the same
+ * treatment product descriptions and CMS pages already get.
+ */
+export interface StoryContent {
+  title: string;
+  subtitle: string;
+  image: string;
+  image_alt: string;
+  name: string;
+  role: string;
+  intro: string;
+  more: string;
+  read_more: string;
+  read_less: string;
+}
+
 interface SectionBase {
   id: string;
   title: string;
@@ -45,6 +63,7 @@ export type HomepageSection =
   | (SectionBase & { type: "hero"; items: HeroItem[] })
   | (SectionBase & { type: "reels"; items: ReelItem[] })
   | (SectionBase & { type: "reviews"; items: ReviewItem[] })
+  | (SectionBase & { type: "story" } & Omit<StoryContent, "title">)
   | (SectionBase & {
       type: "products";
       emoji: string;
@@ -72,6 +91,13 @@ export interface TopbarConfig {
 export interface HomepageConfig {
   version: string;
   generated: string;
+  /**
+   * Section types this plugin version understands. Disabled sections are
+   * stripped from `sections`, so this is the only way to tell "switched off"
+   * apart from "too old to know about it" — which decides whether the
+   * storefront still falls back to its own built-in copy.
+   */
+  manages?: HomepageSection["type"][];
   /** Announcement strip above the header — global, shown on every page. */
   topbar?: TopbarConfig;
   sections: HomepageSection[];

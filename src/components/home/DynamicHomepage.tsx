@@ -8,6 +8,7 @@ import ProductCarousel from "@/components/home/ProductCarousel";
 import ShopByReels from "@/components/home/ShopByReels";
 import CategoryTabsCarousel from "@/components/home/CategoryTabsCarousel";
 import ReviewsSlider from "@/components/home/ReviewsSlider";
+import StorySection from "@/components/home/StorySection";
 import { useWooCommerceProducts } from "@/hooks/useWooCommerce";
 import type { HomepageSection } from "@/hooks/useHomepage";
 import type { HomeBanner } from "@/hooks/useWooCommerce";
@@ -133,6 +134,13 @@ const renderSection = (section: HomepageSection) => {
             images={section.items.map((r, i) => ({ src: r.image, alt: r.caption || `Customer review ${i + 1}` }))}
             title={section.title || "kayalslifestyle Family Happy Customers"}
           />
+        </Reveal>
+      );
+
+    case "story":
+      return (
+        <Reveal>
+          <StorySection story={section} />
         </Reveal>
       );
 

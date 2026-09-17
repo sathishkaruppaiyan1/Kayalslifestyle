@@ -13,6 +13,7 @@ Sections you can add, reorder (drag), rename, and switch on/off:
 | **Product Rail** | title + emoji, grid or carousel. Products are **hand-picked (drag to order)** — an empty list shows the **newest products automatically** — or taken from a **category**. Add as many rails as you like — Hot Sellers, Featured Picks, Wedding Edit… |
 | **Browse by Category** | which categories become tabs, and their order |
 | **Customer Reviews** | review images from the Media Library, optional caption |
+| **Founder Story** | the “Our Story” block — heading, the line under it, the founders’ photo and caption, and the story itself in the normal WordPress editor. Split in two: an **opening** everyone sees and **the rest** behind the Read More button (leave that empty and the button disappears) |
 
 The storefront reads the result from `GET /wp-json/kayals/v1/homepage`.
 
@@ -78,3 +79,5 @@ If the plugin is deactivated or unreachable, the storefront silently falls back 
 - Hand-picked products that are later unpublished are skipped automatically.
 - Leaving a category list empty means "all categories" (strip: top-level only; tabs: every category), in WooCommerce's own order.
 - A rail with nothing picked (or no category chosen) shows the newest products, so New Arrivals works out of the box and no rail ever goes blank. Product tags are not used.
+- The founder story is pre-filled with the text the storefront already showed, so upgrading to 1.6 changes nothing until you edit it. Leave its photo empty to keep the one that ships with the storefront.
+- Switching the story section off hides it: from 1.6 the storefront stops falling back to its own built-in copy.

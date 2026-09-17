@@ -93,14 +93,19 @@ const Index = () => {
     }
   }, [newArrivals]);
 
-  // Plugin-driven homepage: sections in admin order, brand story always last.
+  // Plugin-driven homepage: sections in admin order. The founder story is one
+  // of those sections from plugin 1.6 on, so it is only appended here for
+  // older plugins that cannot edit or switch it off.
   if (homepage && homepage.sections.length > 0) {
+    const pluginOwnsStory = homepage.manages?.includes("story") ?? false;
     return (
       <Layout>
         <DynamicHomepage sections={homepage.sections} />
-        <Reveal>
-          <StorySection />
-        </Reveal>
+        {!pluginOwnsStory && (
+          <Reveal>
+            <StorySection />
+          </Reveal>
+        )}
       </Layout>
     );
   }

@@ -22,6 +22,7 @@
     products: 'Product Rail',
     category_tabs: 'Browse by Category',
     reviews: 'Customer Reviews (images)',
+    story: 'Founder Story',
   };
 
   var TYPE_HELP = {
@@ -31,6 +32,7 @@
     products: 'A row of products. Pick them by hand and drag to order — leave the list empty and it shows the newest products automatically. Or point it at a category. Rename it to anything: Hot Sellers, Featured Picks, Wedding Edit…',
     category_tabs: 'Tabbed rail — one tab per category, showing that category\'s products. Leave the list empty to show every category.',
     reviews: 'Screenshots or photos of customer reviews. Add as many as you like.',
+    story: 'Your story, with a photo of the founders beside it. The first part is always visible; everything in “The rest of the story” sits behind the Read More button so the homepage does not open with a wall of text.',
   };
 
   /* ---------------------------------------------------------------- */
@@ -600,6 +602,123 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* rich text (founder story)                                         */
+  /*                                                                   */
+  /* WordPress's own editor, created on textareas this script builds.  */
+  /* Because render() throws the whole DOM away, and because dragging  */
+  /* a section moves its node (which blanks a TinyMCE iframe), every   */
+  /* editor is unmounted before either happens and mounted again       */
+  /* afterwards. `editors` is the list of textareas currently on the   */
+  /* page that want an editor; it is rebuilt by each render.           */
+  /* ---------------------------------------------------------------- */
+
+  var editors = [];
+
+  // Asked each time rather than cached: wp_enqueue_editor() may print its
+  // scripts after this one, so wp.editor can still be missing while this
+  // file is being evaluated.
+  function hasEditor() {
+    return !!(window.wp && window.wp.editor && window.wp.editor.initialize);
+  }
+
+  /** Whatever the admin sees right now, whether on the Visual or Text tab. */
+  function editorContent(id) {
+    var ed = window.tinymce && window.tinymce.get(id);
+    if (ed && !ed.isHidden()) return ed.getContent();
+    var ta = document.getElementById(id);
+    return ta ? ta.value : '';
+  }
+
+  function syncEditors() {
+    editors.forEach(function (e) {
+      if (document.getElementById(e.id)) e.obj[e.key] = editorContent(e.id);
+    });
+  }
+
+  function unmountEditors() {
+    if (!hasEditor()) return;
+    syncEditors();
+    editors.forEach(function (e) {
+      try {
+        wp.editor.remove(e.id);
+      } catch (err) {
+        /* never initialised, or already gone */
+      }
+    });
+  }
+
+  function mountEditors() {
+    if (!hasEditor()) return;
+    editors.forEach(function (e) {
+      var ta = document.getElementById(e.id);
+      if (!ta) return;
+      ta.value = e.obj[e.key] || '';
+      wp.editor.initialize(e.id, {
+        mediaButtons: false,
+        quicktags: true,
+        tinymce: {
+          wpautop: true,
+          height: 320,
+          toolbar1: 'formatselect,bold,italic,bullist,numlist,blockquote,link,unlink,undo,redo',
+          block_formats: 'Paragraph=p;Heading=h3',
+          setup: function (ed) {
+            // Loading the initial content fires SetContent too, and mounting
+            // happens on every render — including the one right after a save.
+            // Without this the page would announce unsaved changes instantly.
+            var live = false;
+            ed.on('init', function () {
+              live = true;
+            });
+            // Write through on every edit so the state is correct even if the
+            // editor is torn down or blanked before the next save.
+            ed.on('change keyup SetContent Undo Redo', function () {
+              if (!live) return;
+              e.obj[e.key] = ed.getContent();
+              markDirty();
+            });
+          },
+        },
+      });
+    });
+  }
+
+  /** A WordPress editor bound to obj[key]. Falls back to a plain textarea. */
+  function richField(label, obj, key, help) {
+    var id = 'hp-rte-' + Math.random().toString(36).slice(2, 10);
+    var area = el('textarea', { id: id, class: 'hp-rte', rows: 14 });
+    area.value = obj[key] || '';
+    if (hasEditor()) editors.push({ id: id, obj: obj, key: key });
+    // Typing on the Text tab (and the no-editor fallback) writes straight
+    // to the textarea, so listen there as well as on TinyMCE.
+    area.addEventListener('input', function () {
+      obj[key] = this.value;
+      markDirty();
+    });
+    return el('div', { class: 'hp-field hp-rte-field' }, [
+      el('span', { text: label }),
+      area,
+      help ? el('p', { class: 'description', text: help }) : null,
+    ]);
+  }
+
+  function bodyStory(sec) {
+    return el('div', {}, [
+      el('div', { class: 'hp-grid' }, [
+        textField('Line under the heading', sec, 'subtitle', { placeholder: 'Two Sisters. One Dream. One Journey.' }),
+        imageField('Photo of the founders', sec, 'image', { portrait: true }),
+        textField('Photo alt text', sec, 'image_alt', { placeholder: 'Kayal and Madhu, Founders of Kayalslifestyle Boutique' }),
+        textField('Name under the photo', sec, 'name', { placeholder: 'Kayal & Madhu' }),
+        textField('Role under the photo', sec, 'role', { placeholder: 'Founders, Kayalslifestyle Boutique' }),
+        textField('Read more button', sec, 'read_more', { placeholder: 'Read Full Story' }),
+        textField('Read less button', sec, 'read_less', { placeholder: 'Read Less' }),
+      ]),
+      el('p', { class: 'description hp-story-note', text: 'Leave the photo empty to keep the one the storefront already ships with.' }),
+      richField('The opening (always visible)', sec, 'intro', 'Shown to everyone as soon as the page loads. Keep it short — a few paragraphs.'),
+      richField('The rest of the story (behind Read More)', sec, 'more', 'Hidden until a shopper taps the button. Leave this empty and the button disappears — the whole story is then always visible.'),
+    ]);
+  }
+
+  /* ---------------------------------------------------------------- */
   /* section shell + render                                            */
   /* ---------------------------------------------------------------- */
 
@@ -610,6 +729,7 @@
     reels: bodyReels,
     reviews: bodyReviews,
     products: bodyProducts,
+    story: bodyStory,
   };
 
   var collapsed = {};
@@ -934,6 +1054,10 @@
 
   function render() {
     var root = document.getElementById('kayals-hp-app');
+    // Editors hold their content in an iframe, so drain them into the state
+    // and detach them before the DOM underneath is thrown away.
+    unmountEditors();
+    editors = [];
     root.innerHTML = '';
 
     root.appendChild(el('h2', { class: 'hp-heading', text: 'Top bar' }));
@@ -953,6 +1077,10 @@
       items: '.hp-section',
       axis: 'y',
       placeholder: 'hp-section-placeholder',
+      // Moving a node containing a TinyMCE iframe empties it, so put the
+      // editors away for the duration of the drag.
+      start: unmountEditors,
+      stop: mountEditors,
       update: function () {
         var order = $(list)
           .children('.hp-section')
@@ -980,6 +1108,12 @@
       if (type === 'products') {
         Object.assign(sec, { emoji: '', layout: 'grid', source: 'manual', category: 0, limit: 8, products: [], view_all: '' });
         sec.title = 'New Section';
+      } else if (type === 'story') {
+        Object.assign(sec, {
+          subtitle: '', image: '', image_alt: '', name: '', role: '',
+          intro: '', more: '', read_more: 'Read Full Story', read_less: 'Read Less',
+        });
+        sec.title = 'Our Story';
       } else if (type === 'reels') sec.title = 'Shop by Reels';
       else if (type === 'category_tabs') sec.title = 'Browse by Category';
       else if (type === 'reviews') sec.title = 'What Our Customers Say';
@@ -1007,9 +1141,13 @@
         el('a', { href: KayalsHP.restUrl, target: '_blank', text: KayalsHP.restUrl }),
       ])
     );
+
+    // Everything is in the document now, which TinyMCE requires.
+    mountEditors();
   }
 
   function saveState() {
+    syncEditors();
     var status = document.getElementById('hp-status');
     status.textContent = 'Saving…';
     $.post(
