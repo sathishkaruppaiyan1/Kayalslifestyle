@@ -110,23 +110,11 @@ that was switched off.
 - **`reconcile-cashfree-orders`** — new function that finds orders Cashfree
   considers paid but WooCommerce does not, and repairs them.
 
-## Three things only you can do
+## What has to be done by hand
 
-1. **Turn Verify JWT OFF for `cashfree-webhook`.**
-   Supabase Dashboard → Edge Functions → `cashfree-webhook` → Details →
-   *Verify JWT with legacy secret* → off. Until this is done the backstop stays
-   dead and the bug can recur. Re-run the `curl` above: a healthy endpoint
-   answers `Invalid signature`, not `UNAUTHORIZED_NO_AUTH_HEADER`.
-
-2. **Check the webhook is registered** in Cashfree → Developers → Webhooks
-   for `PAYMENT_SUCCESS_WEBHOOK`, pointing at
-   `https://<project>.supabase.co/functions/v1/cashfree-webhook`.
-   (`create-cashfree-order` also sends it as `notify_url` per order, so
-   registration is belt-and-braces.)
-
-3. **Confirm `CASHFREE_ENV=production`** in the edge function secrets.
-   `cashfreeMode()` falls back to `sandbox` when unset, which would make every
-   lookup miss.
+The code changes are committed but none of them are live yet. The ordered
+checklist is **Manual rollout checklist** below — table, functions, the
+Verify JWT switch, secrets, the storefront build, and recovery.
 
 ## Recovering the affected orders
 
@@ -180,6 +168,141 @@ created — check the Cashfree dashboard by phone and amount), or `error`.
 the customer never received.
 
 Keep Verify JWT **ON** for this function — it moves live orders.
+
+## Manual rollout checklist (Supabase dashboard)
+
+Nothing in this fix is live until these steps are done. Do them in order;
+each one has a check so you are never guessing whether it worked.
+
+### 1. Create the payment_logs table
+
+Supabase → **SQL Editor** → New query. Paste the whole of
+`supabase/migrations/20260918000000_create_payment_logs.sql` and Run.
+It is idempotent, so running it twice is harmless.
+
+*Check:* Table Editor shows `payment_logs`, and
+
+```sql
+SELECT * FROM payment_logs_paid_orders;
+```
+
+runs (returning no rows yet).
+
+### 2. Deploy the four edge functions
+
+Supabase → **Edge Functions**. Each file is self-contained — the Cashfree,
+WooCommerce, WhatsApp and logging helpers are inlined precisely so you can
+paste one file with no bundler. Open each function, replace the whole body,
+Deploy.
+
+| Function | File | New? |
+| --- | --- | --- |
+| `create-cashfree-order` | `supabase/functions/create-cashfree-order/index.ts` | update |
+| `verify-cashfree-payment` | `supabase/functions/verify-cashfree-payment/index.ts` | update — **this is the bug fix** |
+| `cashfree-webhook` | `supabase/functions/cashfree-webhook/index.ts` | update |
+| `reconcile-cashfree-orders` | `supabase/functions/reconcile-cashfree-orders/index.ts` | **create new** |
+
+You do **not** need to set `SUPABASE_URL` or `SUPABASE_SERVICE_ROLE_KEY`:
+Supabase injects both into every edge function, which is what the
+`payment_logs` writer uses.
+
+### 3. Turn Verify JWT OFF for cashfree-webhook — the important one
+
+Edge Functions → `cashfree-webhook` → **Details** → *Verify JWT with legacy
+secret* → **off**.
+
+Cashfree cannot send a Supabase JWT, so while this is on, every webhook is
+rejected with 401 before the handler runs. This is fault 2 — the reason the
+mislabelled orders were never repaired. The handler still authenticates every
+request by HMAC signature against `CASHFREE_SECRET_KEY`, so switching this off
+does not open the endpoint.
+
+Leave Verify JWT **ON** for `reconcile-cashfree-orders`: it moves live orders.
+
+*Check:*
+
+```bash
+curl -X POST https://<project>.supabase.co/functions/v1/cashfree-webhook \
+     -H 'Content-Type: application/json' -d '{"type":"PING"}'
+```
+
+- `Invalid signature` → correct, your handler ran.
+- `UNAUTHORIZED_NO_AUTH_HEADER` → still off-limits to Cashfree, redo this step.
+
+### 4. Confirm the edge function secrets
+
+Project Settings → **Edge Functions** → Secrets. These are *separate* from the
+local `.env`; changing `.env` does nothing to deployed functions.
+
+- `CASHFREE_ENV` = `production` — it defaults to `sandbox` when unset, and a
+  sandbox lookup never finds a live order
+- `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY` — must match that environment
+- `WOOCOMMERCE_STORE_URL` — must be the **WordPress** host
+  (`https://app.kayalslifestyle.com`), not the storefront. The storefront
+  answers every path with the SPA’s HTML and no order update will ever land.
+
+### 5. Register the webhook in Cashfree
+
+Cashfree → Developers → **Webhooks** → add
+`https://<project>.supabase.co/functions/v1/cashfree-webhook` for
+`PAYMENT_SUCCESS_WEBHOOK`. `create-cashfree-order` also sends it per-order as
+`notify_url`, so this is belt-and-braces.
+
+### 6. Deploy the storefront
+
+Separate from Supabase. The `Checkout.tsx` change (45-second verify poll, no
+false "no payment was charged", no cancel-on-error) ships with the front end:
+
+```bash
+npm run build      # then upload dist/ as you normally do
+```
+
+### 7. Prove it end to end
+
+Place one real ₹1 order over UPI on a phone, and pay it.
+
+```sql
+-- should show order_created -> verify -> marked_paid (and a webhook row)
+SELECT created_at, source, event, gateway_status, woo_status_before,
+       woo_status_after, message
+FROM payment_logs ORDER BY created_at DESC LIMIT 20;
+```
+
+The order should read **processing** in WooCommerce. If it reads pending for a
+minute and then flips to processing, that is the webhook doing its job —
+exactly what was broken.
+
+### 8. Recover the three outstanding orders
+
+Still cancelled as of 2026-09-18: **58987** (₹1 test), **59289** (₹899) and
+**59386** (₹899). Cashfree confirms all three as PAID.
+
+```bash
+python scripts/cashfree_crosscheck.py --days 30            # confirm the list
+python scripts/cashfree_crosscheck.py --days 30 --apply    # repair
+```
+
+Then re-run without `--apply`: a clean run reports `would_recover: 0`.
+
+Two things the script does not do: it sends no WhatsApp confirmation (those
+customers were never told their order went through), and it will not fix
+59397/59398, which were set to processing by hand and so no longer look
+unsettled. If you want the Cashfree payment ids on those two for your books,
+add them manually — `--orders 59397,59398` skips them by design.
+
+### 9. Rotate the leaked credentials
+
+`.env` was tracked in a **public** GitHub repo until 2026-09-18 (commit
+`d1408d9` untracked it). These were readable by anyone and are still in the
+history, which cannot be unpublished:
+
+- **WooCommerce** consumer key + secret — full read/write on the store
+- **Razorpay** key secret and webhook secret
+- **Supabase** project keys
+
+Reissue all of them, then update the local `.env` *and* the Supabase edge
+function secrets. Cashfree was blank in every published commit and the WATI
+token was added after the untracking, so neither is exposed.
 
 ## The payment log
 
