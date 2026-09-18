@@ -35,12 +35,30 @@ Cashfree):
 
 | status | count | signature |
 | --- | --- | --- |
-| pending | 44 | no Cashfree meta at all; modified 0–4 s after creation — the browser never came back |
+| pending | 44 | no `_cashfree_order_status`; modified 0–4 s after creation — the browser never came back |
 | cancelled | 38 | 37 of them `_cashfree_order_status: ACTIVE`, median 29 s after creation — the cancel-on-ACTIVE bug |
 | processing | 15 | 10 with a real `_cashfree_payment_id` |
 | completed | 3 | |
 
-Only 18 of 100 reached a paid state. Confirming the webhook was dead:
+Only 18 of 100 reached a paid state.
+
+Widening to seven days (159 unsettled orders, all Cashfree) and bucketing by
+what the metadata implies:
+
+| bucket | n | value | reading |
+| --- | --- | --- | --- |
+| cancelled while Cashfree said `ACTIVE` | 53 | ₹59,997 | highest risk — the fault-1 signature |
+| pending, Cashfree order exists | 82 | ₹79,994 | possible — reached the gateway, browser never returned |
+| pending, no Cashfree order created | 8 | ₹3,596 | unlikely to have been paid |
+| other | 16 | ₹17,712 | |
+
+**₹1,39,991 across 135 orders needs a Cashfree cross-check.** Note that the
+`pending` bucket carries `_cashfree_order_id` — only `_cashfree_order_status`
+is missing, because that field is written by verify/webhook rather than at
+creation. Those orders did reach Cashfree and a customer could well have paid,
+so they are not safe to dismiss.
+
+Confirming the webhook was dead:
 
 ```
 $ curl -X POST https://<project>.supabase.co/functions/v1/cashfree-webhook \
@@ -111,6 +129,28 @@ that was switched off.
    lookup miss.
 
 ## Recovering the affected orders
+
+### Option A — from your machine, no deploy needed
+
+`scripts/cashfree_crosscheck.py` does the same job as the edge function but
+runs locally, so recovery does not have to wait on a Supabase deploy. It needs
+`CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY` and `CASHFREE_ENV=production` in
+`.env`, and is read-only until you pass `--apply`:
+
+```bash
+python scripts/cashfree_crosscheck.py --orders 59397,59398   # the known two
+python scripts/cashfree_crosscheck.py --days 7 --csv report.csv
+python scripts/cashfree_crosscheck.py --days 7 --apply       # repair
+```
+
+It works out the WordPress host by probing, because `WOOCOMMERCE_STORE_URL` in
+`.env` is the storefront and answers every path with the SPA’s HTML.
+
+`--apply` moves paid orders to `processing` and stamps the payment id, but does
+**not** send the WhatsApp confirmation — those customers need telling another
+way, or run Option B once it is deployed.
+
+### Option B — the edge function
 
 Deploy the functions, run the migration, then dry-run the sweep — it reports
 and changes nothing unless you pass `dry_run: false`:

@@ -50,3 +50,8 @@ LPT6
 LPT7
 LPT8
 LPT9
+
+# Payment reconciliation reports: these contain customer phone numbers
+/cashfree-*.csv
+/report.csv
+/payment-report*.csv
