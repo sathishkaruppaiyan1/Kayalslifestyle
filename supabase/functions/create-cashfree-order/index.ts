@@ -133,6 +133,117 @@ async function sendTemplate(args: SendTemplateArgs): Promise<SendResult> {
   return { ok: true, status: 200, messageId, raw: parsed };
 }
 
+/* ----------------------------------------------------------------------
+ * payment_logs writer. Source of truth: supabase/functions/_shared/paymentLog.ts
+ *
+ * Every gateway interaction leaves a row, so "the customer paid but the order
+ * says cancelled" is answerable after the fact. Logging never throws and
+ * never blocks a payment: a broken log table must not cost someone an order.
+ * `raw` is whitelisted before storage so card/VPA details never land in the DB.
+ * -------------------------------------------------------------------- */
+
+type PaymentLogEvent =
+  | "order_created"
+  | "checkout_returned"
+  | "verify"
+  | "webhook"
+  | "marked_paid"
+  | "already_paid"
+  | "left_pending"
+  | "marked_failed"
+  | "reconciled"
+  | "error";
+
+interface PaymentLogRow {
+  gateway: "cashfree" | "razorpay";
+  source: string;
+  event: PaymentLogEvent;
+  woo_order_id?: number | string | null;
+  gateway_order_id?: string | null;
+  gateway_payment_id?: string | null;
+  amount?: number | string | null;
+  currency?: string | null;
+  gateway_status?: string | null;
+  payment_status?: string | null;
+  woo_status_before?: string | null;
+  woo_status_after?: string | null;
+  ok?: boolean | null;
+  message?: string | null;
+  raw?: unknown;
+}
+
+const RAW_ALLOWED = new Set([
+  "order_id", "cf_order_id", "order_status", "order_amount", "order_currency",
+  "cf_payment_id", "payment_status", "payment_amount", "payment_group",
+  "payment_time", "payment_message", "bank_reference", "type", "event_time",
+  "razorpay_order_id", "razorpay_payment_id", "status", "method", "amount",
+  "currency", "error_code", "error_description",
+]);
+
+const scrubRaw = (value: unknown, depth = 0): unknown => {
+  if (value === null || value === undefined) return null;
+  if (depth > 3) return "[deep]";
+  if (Array.isArray(value)) return value.slice(0, 10).map((v) => scrubRaw(v, depth + 1));
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (!RAW_ALLOWED.has(k)) continue;
+      out[k] = typeof v === "object" ? scrubRaw(v, depth + 1) : v;
+    }
+    return out;
+  }
+  if (typeof value === "string") return value.slice(0, 500);
+  return value;
+};
+
+const numOrNull = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const logPayment = async (row: PaymentLogRow): Promise<void> => {
+  try {
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SERVICE_ROLE_KEY");
+    if (!url || !key) {
+      console.warn("[payment_log] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing - not logging");
+      return;
+    }
+    const res = await fetch(`${url}/rest/v1/payment_logs`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        gateway: row.gateway,
+        source: row.source,
+        event: row.event,
+        woo_order_id: numOrNull(row.woo_order_id),
+        gateway_order_id: row.gateway_order_id ?? null,
+        gateway_payment_id: row.gateway_payment_id ?? null,
+        amount: numOrNull(row.amount),
+        currency: row.currency ?? "INR",
+        gateway_status: row.gateway_status ?? null,
+        payment_status: row.payment_status ?? null,
+        woo_status_before: row.woo_status_before ?? null,
+        woo_status_after: row.woo_status_after ?? null,
+        ok: row.ok ?? null,
+        message: row.message ? String(row.message).slice(0, 2000) : null,
+        raw: row.raw === undefined ? null : scrubRaw(row.raw),
+      }),
+    });
+    if (!res.ok) {
+      console.warn(`[payment_log] insert failed ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    }
+  } catch (err) {
+    console.warn("[payment_log] insert threw:", err);
+  }
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -144,6 +255,8 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+const SOURCE = "create-cashfree-order";
 
 const CASHFREE_API_VERSION = "2023-08-01";
 
@@ -367,8 +480,35 @@ serve(async (req) => {
 
     if (!res.ok || !body?.payment_session_id) {
       console.error("Cashfree order creation failed:", res.status, JSON.stringify(body).slice(0, 500));
+      await logPayment({
+        gateway: "cashfree",
+        source: SOURCE,
+        event: "error",
+        woo_order_id: woocommerce_order_id,
+        gateway_order_id: orderId,
+        amount: payload.order_amount,
+        ok: false,
+        message: `Cashfree order creation failed (${res.status}): ${body?.message || "no payment_session_id"}`,
+        raw: body,
+      });
       return json({ error: body?.message || "Could not start Cashfree payment" }, 502);
     }
+
+    // One row per payment attempt starts here, so a WooCommerce order that
+    // never reaches a paid state can still be traced back to its gateway order.
+    await logPayment({
+      gateway: "cashfree",
+      source: SOURCE,
+      event: "order_created",
+      woo_order_id: woocommerce_order_id,
+      gateway_order_id: orderId,
+      amount: payload.order_amount,
+      currency: "INR",
+      gateway_status: body?.order_status ?? "ACTIVE",
+      ok: true,
+      message: `Cashfree order opened in ${cashfreeMode()} mode`,
+      raw: body,
+    });
 
     // Remember the Cashfree ids on the WooCommerce order for reconciliation.
     try {

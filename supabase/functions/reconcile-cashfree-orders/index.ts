@@ -256,7 +256,7 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-const SOURCE = "cashfree-webhook";
+const SOURCE = "reconcile-cashfree-orders";
 
 const CASHFREE_API_VERSION = "2023-08-01";
 
@@ -418,6 +418,8 @@ const markWooOrderPaid = async (
     woo_status_before: existing.status,
     woo_status_after: "processing",
     ok: true,
+    // Worth recording loudly: this is the path that repairs an order the
+    // old cancel-on-ACTIVE behaviour had already written off.
     message: ["cancelled", "failed"].includes(existing.status)
       ? `Recovered an order that was wrongly ${existing.status}`
       : "Marked paid",
@@ -453,115 +455,235 @@ const sendWhatsAppConfirmation = async (order: any) => {
 /* ====================================================================== */
 
 /**
- * Cashfree → us. Backstop for the browser flow: if the shopper's tab dies
- * after paying, this still marks the WooCommerce order paid.
+ * Repair sweep for orders whose payment was taken but whose WooCommerce
+ * status never caught up.
  *
- * Register in Cashfree dashboard → Developers → Webhooks (Payment Gateway):
- *   https://<project>.supabase.co/functions/v1/cashfree-webhook
- * Verify JWT must be OFF for this function — Cashfree can't send a Supabase token.
+ * Needed because two faults combined on 2026-09-18: verify-cashfree-payment
+ * cancelled any order Cashfree still called ACTIVE (which is what Cashfree
+ * says while a UPI PIN is being entered), and the webhook that should have
+ * corrected it was being rejected by Supabase before it ran. Both are fixed,
+ * but the orders they damaged need bringing back by hand.
+ *
+ * Walks recent Cashfree orders that are not settled, asks Cashfree what
+ * really happened, and marks the paid ones processing.
+ *
+ * POST {
+ *   dry_run?: boolean,   // default TRUE - report only, change nothing
+ *   statuses?: string[],  // default ["pending","cancelled","failed","on-hold"]
+ *   days?: number,        // how far back to look, default 7, max 90
+ *   limit?: number,       // max orders to examine, default 100, max 500
+ *   order_ids?: number[], // just these WooCommerce orders, ignores the filters
+ * }
+ *
+ * Leave Verify JWT ON for this function: it moves orders and must not be
+ * callable by the public.
  */
+
+const DEFAULT_STATUSES = ["pending", "cancelled", "failed", "on-hold"];
+
+interface Finding {
+  woo_order_id: number;
+  woo_status: string;
+  cashfree_order_id: string | null;
+  cashfree_status: string | null;
+  payment_id: string | null;
+  amount: number | string | null;
+  action: "would_recover" | "recovered" | "genuinely_unpaid" | "no_gateway_order" | "error";
+  detail?: string;
+}
+
+const listWooOrders = async (statuses: string[], days: number, limit: number) => {
+  const { storeUrl, auth } = wooConfig();
+  const after = new Date(Date.now() - days * 86400_000).toISOString().replace(/\.\d{3}Z$/, "");
+  const out: any[] = [];
+  const perPage = 100;
+
+  for (let page = 1; out.length < limit && page <= 10; page++) {
+    const url =
+      `${storeUrl}/wp-json/wc/v3/orders` +
+      `?per_page=${perPage}&page=${page}&orderby=id&order=desc` +
+      `&status=${encodeURIComponent(statuses.join(","))}` +
+      `&after=${encodeURIComponent(after)}`;
+    const res = await fetch(url, { headers: { Authorization: auth } });
+    if (!res.ok) throw new Error(`WooCommerce order list failed (${res.status})`);
+    const batch = await res.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    out.push(...batch);
+    if (batch.length < perPage) break;
+  }
+  return out.slice(0, limit);
+};
+
+const metaValue = (order: any, key: string): string => {
+  const hit = (order?.meta_data ?? []).find((m: any) => m?.key === key);
+  return hit ? String(hit.value ?? "") : "";
+};
+
 serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
   }
-
-  const rawBody = await req.text();
-  const signature = req.headers.get("x-webhook-signature") || "";
-  const timestamp = req.headers.get("x-webhook-timestamp") || "";
-
-  if (!(await verifyWebhookSignature(timestamp, rawBody, signature))) {
-    console.warn("Cashfree webhook signature mismatch");
-    await logPayment({
-      gateway: "cashfree",
-      source: SOURCE,
-      event: "error",
-      ok: false,
-      message: "Webhook rejected: signature mismatch (check CASHFREE_SECRET_KEY matches the Cashfree environment)",
-    });
-    return new Response("Invalid signature", { status: 401 });
-  }
-
-  let event: any;
-  try {
-    event = JSON.parse(rawBody);
-  } catch {
-    return new Response("Invalid JSON", { status: 400 });
-  }
-
-  const type = event?.type;
-  const orderId: string | undefined = event?.data?.order?.order_id;
-  console.log("Cashfree webhook:", type, orderId);
-
-  // Only successful payments change anything; acknowledge everything else so Cashfree stops retrying.
-  if (type !== "PAYMENT_SUCCESS_WEBHOOK" || !orderId) {
-    await logPayment({
-      gateway: "cashfree",
-      source: SOURCE,
-      event: "webhook",
-      gateway_order_id: orderId ?? null,
-      woo_order_id: orderId ? wooOrderIdFromCashfreeOrderId(orderId) : null,
-      gateway_status: event?.data?.order?.order_status ?? null,
-      payment_status: event?.data?.payment?.payment_status ?? null,
-      ok: true,
-      message: `Acknowledged without action: ${type ?? "no type"}`,
-      raw: event?.data ?? event,
-    });
-    return new Response("ignored", { status: 200 });
-  }
-
-  const wooOrderId = event?.data?.order?.order_tags?.woocommerce_order_id || wooOrderIdFromCashfreeOrderId(orderId);
-  if (!wooOrderId) {
-    console.error("Webhook order has no WooCommerce id:", orderId);
-    return new Response("no woo order", { status: 200 });
-  }
-
-  await logPayment({
-    gateway: "cashfree",
-    source: SOURCE,
-    event: "webhook",
-    woo_order_id: wooOrderId,
-    gateway_order_id: orderId,
-    gateway_payment_id: event?.data?.payment?.cf_payment_id
-      ? String(event.data.payment.cf_payment_id)
-      : null,
-    amount: event?.data?.payment?.payment_amount ?? event?.data?.order?.order_amount ?? null,
-    gateway_status: event?.data?.order?.order_status ?? null,
-    payment_status: event?.data?.payment?.payment_status ?? null,
-    ok: true,
-    message: "PAYMENT_SUCCESS_WEBHOOK received",
-    raw: event?.data ?? event,
-  });
 
   try {
-    // Re-fetch from Cashfree rather than trusting the payload's amounts.
-    const cfOrder = await getCashfreeOrder(orderId);
-    if (cfOrder.order_status !== "PAID") {
-      console.warn("Webhook says success but order is", cfOrder.order_status);
-      await logPayment({
-        gateway: "cashfree", source: SOURCE, event: "left_pending",
-        woo_order_id: wooOrderId, gateway_order_id: orderId,
-        gateway_status: cfOrder.order_status, ok: false,
-        message: `Webhook claimed success but the order reads ${cfOrder.order_status}`,
-      });
-      return new Response("not paid", { status: 200 });
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    // Defaults to a dry run on purpose: this function writes to live orders,
+    // so making a change has to be asked for explicitly.
+    const dryRun = body?.dry_run !== false;
+    const statuses: string[] = Array.isArray(body?.statuses) && body.statuses.length
+      ? body.statuses.map(String)
+      : DEFAULT_STATUSES;
+    const days = Math.min(90, Math.max(1, Number(body?.days) || 7));
+    const limit = Math.min(500, Math.max(1, Number(body?.limit) || 100));
+    const onlyIds: number[] = Array.isArray(body?.order_ids)
+      ? body.order_ids.map((n: unknown) => Number(n)).filter((n: number) => Number.isFinite(n))
+      : [];
+
+    let orders: any[];
+    if (onlyIds.length) {
+      orders = [];
+      for (const id of onlyIds.slice(0, limit)) {
+        try {
+          orders.push(await getWooOrder(id));
+        } catch (err) {
+          console.warn("Could not load order", id, err);
+        }
+      }
+    } else {
+      orders = await listWooOrders(statuses, days, limit);
     }
-    const payments = await getCashfreePayments(orderId);
-    const success = payments.find((p) => p.payment_status === "SUCCESS");
-    const result = await markWooOrderPaid(wooOrderId, cfOrder, success);
-    console.log("Webhook processed:", wooOrderId, result.alreadyPaid ? "already paid" : "updated");
-    return new Response("ok", { status: 200 });
+
+    const findings: Finding[] = [];
+
+    for (const order of orders) {
+      const wooId = Number(order.id);
+      const gateway = String(order.payment_method || "").toLowerCase();
+      if (!gateway.includes("cashfree")) continue;
+      if (["processing", "completed", "refunded"].includes(order.status)) continue;
+
+      const cfOrderId = metaValue(order, "_cashfree_order_id");
+      if (!cfOrderId) {
+        // create-cashfree-order stamps this id before the shopper can pay, so
+        // its absence means the payment attempt never really started. Nothing
+        // to look up; surfaced so it can be checked in the Cashfree dashboard.
+        findings.push({
+          woo_order_id: wooId,
+          woo_status: order.status,
+          cashfree_order_id: null,
+          cashfree_status: null,
+          payment_id: null,
+          amount: order.total ?? null,
+          action: "no_gateway_order",
+          detail: "No _cashfree_order_id on the order - no Cashfree order was ever created for it",
+        });
+        continue;
+      }
+
+      try {
+        const cfOrder = await getCashfreeOrder(cfOrderId);
+        const payments = await getCashfreePayments(cfOrderId);
+        const success = payments.find((p) => p.payment_status === "SUCCESS");
+
+        if (cfOrder.order_status === "PAID") {
+          if (dryRun) {
+            findings.push({
+              woo_order_id: wooId,
+              woo_status: order.status,
+              cashfree_order_id: cfOrderId,
+              cashfree_status: cfOrder.order_status,
+              payment_id: success ? String(success.cf_payment_id) : null,
+              amount: cfOrder.order_amount,
+              action: "would_recover",
+              detail: `Cashfree took ${cfOrder.order_amount} but the order reads ${order.status}`,
+            });
+          } else {
+            const result = await markWooOrderPaid(wooId, cfOrder, success);
+            await logPayment({
+              gateway: "cashfree",
+              source: SOURCE,
+              event: "reconciled",
+              woo_order_id: wooId,
+              gateway_order_id: cfOrderId,
+              gateway_payment_id: success ? String(success.cf_payment_id) : null,
+              amount: cfOrder.order_amount,
+              currency: cfOrder.order_currency,
+              gateway_status: cfOrder.order_status,
+              payment_status: success?.payment_status ?? null,
+              woo_status_before: order.status,
+              woo_status_after: result.alreadyPaid ? order.status : "processing",
+              ok: true,
+              message: `Reconciled from ${order.status}`,
+              raw: { order: cfOrder, payment: success },
+            });
+            findings.push({
+              woo_order_id: wooId,
+              woo_status: order.status,
+              cashfree_order_id: cfOrderId,
+              cashfree_status: cfOrder.order_status,
+              payment_id: success ? String(success.cf_payment_id) : null,
+              amount: cfOrder.order_amount,
+              action: "recovered",
+              detail: result.alreadyPaid ? "Was already settled" : "Moved to processing and paid",
+            });
+          }
+        } else {
+          findings.push({
+            woo_order_id: wooId,
+            woo_status: order.status,
+            cashfree_order_id: cfOrderId,
+            cashfree_status: cfOrder.order_status,
+            payment_id: null,
+            amount: cfOrder.order_amount,
+            action: "genuinely_unpaid",
+            detail: `Cashfree says ${cfOrder.order_status}` +
+              (payments.length ? ` (attempts: ${payments.map((p) => p.payment_status).join(", ")})` : " (no payment attempted)"),
+          });
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn("Reconcile failed for order", wooId, message);
+        findings.push({
+          woo_order_id: wooId,
+          woo_status: order.status,
+          cashfree_order_id: cfOrderId,
+          cashfree_status: null,
+          payment_id: null,
+          amount: order.total ?? null,
+          action: "error",
+          detail: message,
+        });
+      }
+    }
+
+    const tally = findings.reduce<Record<string, number>>((acc, f) => {
+      acc[f.action] = (acc[f.action] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    const recoverable = findings.filter((f) => f.action === "would_recover" || f.action === "recovered");
+    const moneyAtStake = recoverable.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+
+    console.log("Reconcile summary:", JSON.stringify({ dryRun, tally, moneyAtStake }));
+
+    return json({
+      dry_run: dryRun,
+      examined: findings.length,
+      mode: cashfreeMode(),
+      tally,
+      money_at_stake: Number(moneyAtStake.toFixed(2)),
+      findings,
+      next_step: dryRun && recoverable.length
+        ? "Re-send the same request with {\"dry_run\": false} to apply these recoveries."
+        : undefined,
+    });
   } catch (error) {
-    console.error("cashfree-webhook error:", error);
+    console.error("reconcile-cashfree-orders error:", error);
     await logPayment({
       gateway: "cashfree",
       source: SOURCE,
       event: "error",
-      woo_order_id: wooOrderId,
-      gateway_order_id: orderId,
       ok: false,
-      message: error instanceof Error ? error.message : String(error),
+      message: error instanceof Error ? error.message : "Internal server error",
     });
-    // 500 makes Cashfree retry later, which is what we want if WooCommerce was briefly down.
-    return new Response("error", { status: 500 });
+    return json({ error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
 });

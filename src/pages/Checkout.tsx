@@ -560,6 +560,9 @@ const Checkout = () => {
       }
 
       if (isCashfree) {
+        // Set once the Cashfree checkout has been opened: past that point a
+        // failure might mean "paid but unconfirmed", never "definitely unpaid".
+        let cfOrderStarted = false;
         try {
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -592,6 +595,7 @@ const Checkout = () => {
             throw new Error("Cashfree checkout is still loading. Please try again.");
           }
           const cashfree = CashfreeSDK({ mode: cfData.mode === "production" ? "production" : "sandbox" });
+          cfOrderStarted = true;
           const result = await cashfree.checkout({
             paymentSessionId: cfData.payment_session_id,
             redirectTarget: "_modal",
@@ -599,13 +603,46 @@ const Checkout = () => {
           console.log("Cashfree checkout result:", result);
 
           // 3. Whatever the SDK said, the server decides — it asks Cashfree directly.
-          const verifyRes = await fetch(`${supabaseUrl}/functions/v1/verify-cashfree-payment`, {
-            method: "POST",
-            headers: fnHeaders,
-            body: JSON.stringify({ order_id: cfData.order_id, woocommerce_order_id: response.id }),
-          });
-          const verifyData = await verifyRes.json();
-          console.log("Cashfree verification:", verifyData);
+          //
+          // Polled rather than asked once. With UPI the checkout modal closes
+          // as soon as the payment app takes over, which is several seconds
+          // before the money actually moves, so the first answer is usually
+          // "not paid yet" on a payment that is about to succeed. Give it a
+          // reasonable window before telling the shopper anything.
+          const verifyOnce = async () => {
+            const res = await fetch(`${supabaseUrl}/functions/v1/verify-cashfree-payment`, {
+              method: "POST",
+              headers: fnHeaders,
+              body: JSON.stringify({ order_id: cfData.order_id, woocommerce_order_id: response.id }),
+            });
+            return { ok: res.ok, data: await res.json() };
+          };
+
+          interface CashfreeVerifyResult {
+            payment_success?: boolean;
+            order_status?: string;
+            /** Gateway has not given a final answer yet — may still succeed. */
+            pending?: boolean;
+            updated?: boolean;
+            already_paid?: boolean;
+            payment_id?: string | null;
+            error?: string;
+          }
+
+          let verifyRes: { ok: boolean };
+          let verifyData: CashfreeVerifyResult;
+          const deadline = Date.now() + 45000;
+          for (let attempt = 0; ; attempt++) {
+            const outcome = await verifyOnce();
+            verifyRes = { ok: outcome.ok };
+            verifyData = outcome.data;
+            console.log(`Cashfree verification (attempt ${attempt + 1}):`, verifyData);
+
+            // Settled either way, or the server is unhappy — stop asking.
+            if (!outcome.ok || verifyData?.payment_success || !verifyData?.pending) break;
+            if (Date.now() >= deadline) break;
+            await new Promise((r) => setTimeout(r, 3000));
+          }
 
           if (verifyRes.ok && verifyData?.payment_success) {
             if (!verifyData?.updated) {
@@ -644,8 +681,24 @@ const Checkout = () => {
             return;
           }
 
-          // Not paid: the verify step already marked the order failed/cancelled.
           setIsProcessing(false);
+
+          // Still unsettled after the polling window. The payment may yet
+          // land — the webhook will settle the order if it does — so do NOT
+          // claim nothing was charged, and do not invite a second payment.
+          if (verifyData?.pending) {
+            toast({
+              title: "Confirming your payment",
+              description:
+                `We have not had final confirmation for order #${response.number || response.id} yet. ` +
+                "If you completed the payment, do not pay again — you will get a WhatsApp confirmation " +
+                "as soon as it clears. Contact us if you do not hear within 30 minutes.",
+              duration: 15000,
+            });
+            return;
+          }
+
+          // Cashfree gave a terminal answer: the order really was not paid.
           const closedByUser = result?.error && !verifyData?.order_status?.match(/EXPIRED|TERMINATED/);
           toast({
             variant: closedByUser ? "default" : "destructive",
@@ -657,19 +710,22 @@ const Checkout = () => {
           return;
         } catch (err: any) {
           console.error("Cashfree error:", err);
-          // Free the order so the shopper can retry
-          try {
-            await supabase.functions.invoke("woocommerce-orders", {
-              method: "PUT",
-              body: { id: response.id, status: "cancelled" },
-            });
-          } catch (cancelErr) {
-            console.error("Error cancelling order:", cancelErr);
-          }
+
+          // Deliberately does NOT cancel the order. This catch also fires for
+          // a network blip on the verify call, by which point the shopper may
+          // already have paid — cancelling here is exactly the mistake that
+          // marked paid orders as cancelled. An order left pending is cleaned
+          // up by WooCommerce's "Hold stock (minutes)" setting, and settled by
+          // the webhook if the payment does land.
+          const startedPaying = Boolean(cfOrderStarted);
           toast({
             variant: "destructive",
-            title: "Payment Initialization Failed",
-            description: err.message || "Could not start Cashfree. Please try again.",
+            title: startedPaying ? "Could not confirm your payment" : "Payment Initialization Failed",
+            description: startedPaying
+              ? `Order #${response.number || response.id} is awaiting confirmation. If you completed the payment, ` +
+                "do not pay again — we will confirm on WhatsApp. Please contact us if you do not hear within 30 minutes."
+              : (err.message || "Could not start Cashfree. Please try again."),
+            duration: startedPaying ? 15000 : 8000,
           });
           setIsProcessing(false);
           return;

@@ -133,6 +133,117 @@ async function sendTemplate(args: SendTemplateArgs): Promise<SendResult> {
   return { ok: true, status: 200, messageId, raw: parsed };
 }
 
+/* ----------------------------------------------------------------------
+ * payment_logs writer. Source of truth: supabase/functions/_shared/paymentLog.ts
+ *
+ * Every gateway interaction leaves a row, so "the customer paid but the order
+ * says cancelled" is answerable after the fact. Logging never throws and
+ * never blocks a payment: a broken log table must not cost someone an order.
+ * `raw` is whitelisted before storage so card/VPA details never land in the DB.
+ * -------------------------------------------------------------------- */
+
+type PaymentLogEvent =
+  | "order_created"
+  | "checkout_returned"
+  | "verify"
+  | "webhook"
+  | "marked_paid"
+  | "already_paid"
+  | "left_pending"
+  | "marked_failed"
+  | "reconciled"
+  | "error";
+
+interface PaymentLogRow {
+  gateway: "cashfree" | "razorpay";
+  source: string;
+  event: PaymentLogEvent;
+  woo_order_id?: number | string | null;
+  gateway_order_id?: string | null;
+  gateway_payment_id?: string | null;
+  amount?: number | string | null;
+  currency?: string | null;
+  gateway_status?: string | null;
+  payment_status?: string | null;
+  woo_status_before?: string | null;
+  woo_status_after?: string | null;
+  ok?: boolean | null;
+  message?: string | null;
+  raw?: unknown;
+}
+
+const RAW_ALLOWED = new Set([
+  "order_id", "cf_order_id", "order_status", "order_amount", "order_currency",
+  "cf_payment_id", "payment_status", "payment_amount", "payment_group",
+  "payment_time", "payment_message", "bank_reference", "type", "event_time",
+  "razorpay_order_id", "razorpay_payment_id", "status", "method", "amount",
+  "currency", "error_code", "error_description",
+]);
+
+const scrubRaw = (value: unknown, depth = 0): unknown => {
+  if (value === null || value === undefined) return null;
+  if (depth > 3) return "[deep]";
+  if (Array.isArray(value)) return value.slice(0, 10).map((v) => scrubRaw(v, depth + 1));
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (!RAW_ALLOWED.has(k)) continue;
+      out[k] = typeof v === "object" ? scrubRaw(v, depth + 1) : v;
+    }
+    return out;
+  }
+  if (typeof value === "string") return value.slice(0, 500);
+  return value;
+};
+
+const numOrNull = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+const logPayment = async (row: PaymentLogRow): Promise<void> => {
+  try {
+    const url = Deno.env.get("SUPABASE_URL");
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SERVICE_ROLE_KEY");
+    if (!url || !key) {
+      console.warn("[payment_log] SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY missing - not logging");
+      return;
+    }
+    const res = await fetch(`${url}/rest/v1/payment_logs`, {
+      method: "POST",
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        gateway: row.gateway,
+        source: row.source,
+        event: row.event,
+        woo_order_id: numOrNull(row.woo_order_id),
+        gateway_order_id: row.gateway_order_id ?? null,
+        gateway_payment_id: row.gateway_payment_id ?? null,
+        amount: numOrNull(row.amount),
+        currency: row.currency ?? "INR",
+        gateway_status: row.gateway_status ?? null,
+        payment_status: row.payment_status ?? null,
+        woo_status_before: row.woo_status_before ?? null,
+        woo_status_after: row.woo_status_after ?? null,
+        ok: row.ok ?? null,
+        message: row.message ? String(row.message).slice(0, 2000) : null,
+        raw: row.raw === undefined ? null : scrubRaw(row.raw),
+      }),
+    });
+    if (!res.ok) {
+      console.warn(`[payment_log] insert failed ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    }
+  } catch (err) {
+    console.warn("[payment_log] insert threw:", err);
+  }
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -144,6 +255,8 @@ const json = (body: unknown, status = 200) =>
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+const SOURCE = "verify-cashfree-payment";
 
 const CASHFREE_API_VERSION = "2023-08-01";
 
@@ -262,6 +375,18 @@ const markWooOrderPaid = async (
   const existing = await getWooOrder(wooOrderId);
   if (["processing", "completed"].includes(existing.status)) {
     console.log(`Order ${wooOrderId} already ${existing.status} — skipping update`);
+    await logPayment({
+      gateway: "cashfree",
+      source: SOURCE,
+      event: "already_paid",
+      woo_order_id: wooOrderId,
+      gateway_order_id: cfOrder.order_id,
+      gateway_status: cfOrder.order_status,
+      woo_status_before: existing.status,
+      woo_status_after: existing.status,
+      ok: true,
+      message: `Already ${existing.status}; nothing to do`,
+    });
     return { updated: false, alreadyPaid: true, order: existing };
   }
 
@@ -279,6 +404,27 @@ const markWooOrderPaid = async (
     ],
   });
   console.log("Order updated to processing:", order.id);
+  await logPayment({
+    gateway: "cashfree",
+    source: SOURCE,
+    event: "marked_paid",
+    woo_order_id: wooOrderId,
+    gateway_order_id: cfOrder.order_id,
+    gateway_payment_id: paymentId || null,
+    amount: cfOrder.order_amount,
+    currency: cfOrder.order_currency,
+    gateway_status: cfOrder.order_status,
+    payment_status: payment?.payment_status ?? null,
+    woo_status_before: existing.status,
+    woo_status_after: "processing",
+    ok: true,
+    // Worth recording loudly: this is the path that repairs an order the
+    // old cancel-on-ACTIVE behaviour had already written off.
+    message: ["cancelled", "failed"].includes(existing.status)
+      ? `Recovered an order that was wrongly ${existing.status}`
+      : "Marked paid",
+    raw: { order: cfOrder, payment },
+  });
 
   await sendWhatsAppConfirmation(order);
   return { updated: true, alreadyPaid: false, order };
@@ -321,18 +467,38 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let loggedOrderId: string | undefined;
+  let loggedWooId: string | number | undefined;
+
   try {
     const { order_id, woocommerce_order_id } = await req.json();
     if (!order_id) return json({ error: "order_id is required" }, 400);
+    loggedOrderId = order_id;
 
     const wooOrderId = woocommerce_order_id || wooOrderIdFromCashfreeOrderId(order_id);
     if (!wooOrderId) return json({ error: "woocommerce_order_id is required" }, 400);
+    loggedWooId = wooOrderId;
 
     const cfOrder = await getCashfreeOrder(order_id);
-    console.log("Cashfree order", order_id, "status:", cfOrder.order_status);
+    const payments = await getCashfreePayments(order_id);
+    console.log("Cashfree order", order_id, "status:", cfOrder.order_status, "payments:", payments.length);
+
+    await logPayment({
+      gateway: "cashfree",
+      source: SOURCE,
+      event: "verify",
+      woo_order_id: wooOrderId,
+      gateway_order_id: cfOrder.order_id,
+      amount: cfOrder.order_amount,
+      currency: cfOrder.order_currency,
+      gateway_status: cfOrder.order_status,
+      payment_status: payments.map((p) => p.payment_status).join(",") || null,
+      ok: true,
+      message: `Cashfree reports ${cfOrder.order_status}`,
+      raw: { order: cfOrder, payments },
+    });
 
     if (cfOrder.order_status === "PAID") {
-      const payments = await getCashfreePayments(order_id);
       const success = payments.find((p) => p.payment_status === "SUCCESS");
       const result = await markWooOrderPaid(wooOrderId, cfOrder, success);
       return json({
@@ -344,24 +510,107 @@ serve(async (req) => {
       });
     }
 
-    // Not paid. Record the outcome on the order; a still-ACTIVE order (user
-    // just closed the popup) is cancelled so stock isn't held.
-    const failed = ["EXPIRED", "TERMINATED", "TERMINATION_REQUESTED"].includes(cfOrder.order_status);
+    /* ------------------------------------------------------------------
+     * Not PAID *yet*.
+     *
+     * This branch used to cancel the WooCommerce order whenever Cashfree
+     * said ACTIVE, on the assumption that ACTIVE meant "the shopper closed
+     * the popup". It does not. ACTIVE means "this order has no completed
+     * payment yet" - which is exactly what Cashfree reports while a UPI
+     * collect request sits on the customer phone waiting for a PIN. The
+     * storefront calls us the moment the checkout modal closes, which on
+     * mobile is when the UPI app takes over - seconds before the money
+     * actually moves. Cancelling there marked genuinely paid orders as
+     * cancelled (orders 59397, 59398 and dozens more on 2026-09-18).
+     *
+     * So: only a terminal Cashfree status closes an order. ACTIVE leaves it
+     * pending, and the webhook (or the reconcile sweep) settles it when the
+     * payment lands. Stock is released by WooCommerce own "Hold stock
+     * (minutes)" setting, which is what that setting is for.
+     * ------------------------------------------------------------------ */
+    const TERMINAL = ["EXPIRED", "TERMINATED", "TERMINATION_REQUESTED"];
+    const isTerminal = TERMINAL.includes(cfOrder.order_status);
+
+    // A payment still in flight is the strongest possible signal to wait.
+    const inFlight = payments.some((p) => ["PENDING", "SUCCESS", "NOT_ATTEMPTED"].includes(p.payment_status));
+
+    let existingStatus: string | undefined;
     try {
-      await updateWooOrder(wooOrderId, {
-        status: failed ? "failed" : "cancelled",
-        meta_data: [
-          { key: "_cashfree_order_id", value: cfOrder.order_id },
-          { key: "_cashfree_order_status", value: cfOrder.order_status },
-        ],
-      });
-    } catch (err) {
-      console.warn("Could not update unpaid WooCommerce order:", err);
+      existingStatus = (await getWooOrder(wooOrderId))?.status;
+    } catch {
+      /* non-fatal: only used to fill in the log row */
     }
 
-    return json({ payment_success: false, order_status: cfOrder.order_status, updated: false });
+    if (isTerminal && !inFlight) {
+      try {
+        await updateWooOrder(wooOrderId, {
+          status: "failed",
+          meta_data: [
+            { key: "_cashfree_order_id", value: cfOrder.order_id },
+            { key: "_cashfree_order_status", value: cfOrder.order_status },
+          ],
+        });
+        await logPayment({
+          gateway: "cashfree", source: SOURCE, event: "marked_failed",
+          woo_order_id: wooOrderId, gateway_order_id: cfOrder.order_id,
+          amount: cfOrder.order_amount, currency: cfOrder.order_currency,
+          gateway_status: cfOrder.order_status,
+          woo_status_before: existingStatus ?? null, woo_status_after: "failed",
+          ok: true, message: `Cashfree status ${cfOrder.order_status} is terminal`,
+        });
+      } catch (err) {
+        console.warn("Could not mark WooCommerce order failed:", err);
+        await logPayment({
+          gateway: "cashfree", source: SOURCE, event: "error",
+          woo_order_id: wooOrderId, gateway_order_id: cfOrder.order_id,
+          gateway_status: cfOrder.order_status, ok: false,
+          message: `Failed to mark order failed: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
+    } else {
+      // Stamp the gateway status on the order but leave the order status alone.
+      try {
+        await updateWooOrder(wooOrderId, {
+          meta_data: [
+            { key: "_cashfree_order_id", value: cfOrder.order_id },
+            { key: "_cashfree_order_status", value: cfOrder.order_status },
+          ],
+        });
+      } catch (err) {
+        console.warn("Could not stamp Cashfree status on order:", err);
+      }
+      await logPayment({
+        gateway: "cashfree", source: SOURCE, event: "left_pending",
+        woo_order_id: wooOrderId, gateway_order_id: cfOrder.order_id,
+        amount: cfOrder.order_amount, currency: cfOrder.order_currency,
+        gateway_status: cfOrder.order_status,
+        payment_status: payments.map((p) => p.payment_status).join(",") || null,
+        woo_status_before: existingStatus ?? null, woo_status_after: existingStatus ?? null,
+        ok: true,
+        message: inFlight
+          ? "Payment still in flight - order left pending for the webhook to settle"
+          : "Not paid yet - order left pending rather than cancelled",
+      });
+    }
+
+    return json({
+      payment_success: false,
+      order_status: cfOrder.order_status,
+      // Tells the storefront not to claim the order was abandoned.
+      pending: !isTerminal || inFlight,
+      updated: false,
+    });
   } catch (error) {
     console.error("verify-cashfree-payment error:", error);
+    await logPayment({
+      gateway: "cashfree",
+      source: SOURCE,
+      event: "error",
+      woo_order_id: loggedWooId ?? null,
+      gateway_order_id: loggedOrderId ?? null,
+      ok: false,
+      message: error instanceof Error ? error.message : "Internal server error",
+    });
     return json({ error: error instanceof Error ? error.message : "Internal server error" }, 500);
   }
 });
