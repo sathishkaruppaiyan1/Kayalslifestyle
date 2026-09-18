@@ -59,3 +59,8 @@ LPT9
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Local secrets: never commit these
+.env
+.env.local
+.env.*.local
