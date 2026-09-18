@@ -55,3 +55,7 @@ LPT9
 /cashfree-*.csv
 /report.csv
 /payment-report*.csv
+
+# Python bytecode
+__pycache__/
+*.pyc
