@@ -28,4 +28,4 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-Sitemap: https://blacklovers.in/sitemap.xml
+Sitemap: https://kayalslifestyle.com/sitemap.xml
