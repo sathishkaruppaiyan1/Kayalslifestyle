@@ -21,6 +21,8 @@ interface OrderDetails {
     image?: string;
   }>;
   total: number;
+  discount?: number;
+  couponCode?: string;
 }
 
 const ThankYou = () => {
@@ -39,7 +41,8 @@ const ThankYou = () => {
     return null;
   }
 
-  const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
+  const formatPrice = (price: number) =>
+    `Rs. ${price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <Layout>
@@ -119,6 +122,14 @@ const ThankYou = () => {
             </div>
 
             <div className="border-t border-border mt-4 pt-4">
+              {!!orderDetails.discount && (
+                <div className="flex justify-between items-center text-sm mb-2">
+                  <span className="text-muted-foreground">
+                    Discount{orderDetails.couponCode && <span className="uppercase"> ({orderDetails.couponCode})</span>}
+                  </span>
+                  <span className="font-bold text-green-600">- {formatPrice(orderDetails.discount)}</span>
+                </div>
+              )}
               <div className="flex justify-between items-center text-lg font-bold">
                 <span>Total</span>
                 <span>{formatPrice(orderDetails.total)}</span>

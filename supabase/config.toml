@@ -57,6 +57,9 @@ verify_jwt = false
 [functions.woocommerce-orders]
 verify_jwt = false
 
+[functions.woocommerce-coupons]
+verify_jwt = false
+
 [functions.woocommerce-pages]
 verify_jwt = false
 

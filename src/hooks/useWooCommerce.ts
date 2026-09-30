@@ -79,6 +79,8 @@ export interface CreateOrderData {
     country: string;
   };
   line_items: OrderLineItem[];
+  // WooCommerce validates and applies these itself when creating the order.
+  coupon_lines?: { code: string }[];
   meta_data?: {
     key: string;
     value: string;

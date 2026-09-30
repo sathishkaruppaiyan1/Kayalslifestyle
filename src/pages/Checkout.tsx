@@ -56,6 +56,20 @@ const Checkout = () => {
     whatsapp: "",
   });
 
+  // Coupon: previewed by the woocommerce-coupons function, then applied by
+  // WooCommerce itself through coupon_lines when the order is created.
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const couponDiscount = appliedCoupon?.discount ?? 0;
+  const payableTotal = Math.max(0, Math.round((totalPrice - couponDiscount) * 100) / 100);
+
+  // The preview was for the cart as it was; make the shopper re-apply if it changes.
+  useEffect(() => {
+    setAppliedCoupon(null);
+  }, [totalPrice]);
+
   // Set default payment method when gateways are loaded
   useEffect(() => {
     if (paymentGateways && paymentGateways.length > 0 && !paymentMethod) {
@@ -88,7 +102,62 @@ const Checkout = () => {
     };
   }, []);
 
-  const formatPrice = (price: number) => `Rs. ${price.toLocaleString("en-IN")}.00`;
+  const formatPrice = (price: number) =>
+    `Rs. ${price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim();
+    if (!code) {
+      setCouponError("Please enter a coupon code.");
+      return;
+    }
+    setIsApplyingCoupon(true);
+    setCouponError("");
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/woocommerce-coupons`, {
+        method: "POST",
+        headers: {
+          "apikey": supabaseKey,
+          "Authorization": `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+          email: formData.email,
+          items: items.map(item => ({
+            product_id: parseInt(item.product.id),
+            variation_id: item.variationId,
+            quantity: item.quantity,
+            price: item.product.price,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.valid) {
+        setAppliedCoupon(null);
+        setCouponError(data?.error || "Could not apply this coupon.");
+        return;
+      }
+      setAppliedCoupon({ code: data.code, discount: Number(data.discount) });
+      toast({
+        title: "Coupon Applied",
+        description: `You save ${formatPrice(Number(data.discount))} with ${String(data.code).toUpperCase()}.`,
+      });
+    } catch (error) {
+      console.error("Error applying coupon:", error);
+      setCouponError("Could not check the coupon right now. Please try again.");
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    setCouponError("");
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -246,7 +315,7 @@ const Checkout = () => {
       }
       // Find selected payment gateway details
       const selectedGateway = paymentGateways?.find(g => g.id === paymentMethod);
-      const totalAmount = totalPrice;
+      const totalAmount = payableTotal;
 
       const orderData = {
         payment_method: paymentMethod || "cod",
@@ -286,6 +355,7 @@ const Checkout = () => {
             ...(item.color ? [{ key: "Color", value: item.color }] : [])
           ]
         })),
+        ...(appliedCoupon ? { coupon_lines: [{ code: appliedCoupon.code }] } : {}),
         meta_data: [
           { key: "whatsapp_number", value: formData.whatsapp },
           { key: "alternate_phone", value: formData.alternatePhone }
@@ -302,6 +372,28 @@ const Checkout = () => {
           woocommerce_total: wooTotal,
           order_id: response.id,
         });
+
+        // With a coupon, WooCommerce's own discount is the one that counts, and
+        // re-setting line totals below would strip it. Don't charge an amount
+        // the shopper wasn't shown: cancel this order and let them re-apply.
+        if (appliedCoupon) {
+          try {
+            await supabase.functions.invoke("woocommerce-orders", {
+              method: "PUT",
+              body: { id: response.id, status: "cancelled" },
+            });
+          } catch (cancelError) {
+            console.error("Failed to cancel coupon-mismatch order:", cancelError);
+          }
+          setAppliedCoupon(null);
+          toast({
+            variant: "destructive",
+            title: "Coupon Total Changed",
+            description: `With coupon ${appliedCoupon.code.toUpperCase()} the store calculated ${formatPrice(wooTotal || 0)} instead of ${formatPrice(totalAmount)}. Please apply the coupon again and review your total.`,
+          });
+          setIsProcessing(false);
+          return;
+        }
 
         // Attempt to fix the order total via update
         try {
@@ -474,6 +566,8 @@ const Checkout = () => {
                   image: item.image || item.product.images[0],
                 })),
                 total: totalAmount,
+                discount: couponDiscount,
+                couponCode: appliedCoupon?.code,
               };
 
               clearCart();
@@ -674,6 +768,8 @@ const Checkout = () => {
                 image: item.image || item.product.images[0],
               })),
               total: totalAmount,
+              discount: couponDiscount,
+              couponCode: appliedCoupon?.code,
             };
 
             clearCart();
@@ -749,12 +845,36 @@ const Checkout = () => {
           image: item.image || item.product.images[0],
         })),
         total: totalAmount,
+        discount: couponDiscount,
+        couponCode: appliedCoupon?.code,
       };
 
       clearCart();
       navigate("/thank-you", { state: orderDetails });
     } catch (error) {
       console.error("Order processing failed:", error);
+      // WooCommerce re-checks the coupon on the real order (e.g. per-customer
+      // limits against the billing email) and rejects it with a message.
+      const errorText = error instanceof Error ? error.message : "";
+      let wooMessage: string | undefined;
+      try {
+        // "Failed to create order: 500 {"error":"WooCommerce API error: 400 - {...}"}"
+        const outer = JSON.parse(errorText.slice(errorText.indexOf("{")));
+        const inner = String(outer?.error ?? "");
+        wooMessage = JSON.parse(inner.slice(inner.indexOf("{")))?.message;
+      } catch {
+        // Not the shape we expected; fall back to a generic message.
+      }
+      if (appliedCoupon && /coupon/i.test(errorText)) {
+        setAppliedCoupon(null);
+        setIsProcessing(false);
+        toast({
+          variant: "destructive",
+          title: "Coupon Not Applied",
+          description: `${wooMessage || "This coupon cannot be used for this order."} Your order was not placed; remove the coupon and try again.`,
+        });
+        return;
+      }
       toast({
         variant: "destructive",
         title: "Order Failed",
@@ -1115,12 +1235,77 @@ const Checkout = () => {
                     ))}
                   </div>
 
+                  {/* Coupon */}
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <Label htmlFor="coupon" className="font-bold">Coupon code</Label>
+                    {appliedCoupon ? (
+                      <div className="mt-2 flex items-center justify-between gap-3 border border-green-600 bg-background px-3 py-2">
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm uppercase truncate">{appliedCoupon.code}</p>
+                          <p className="text-xs text-green-600">You save {formatPrice(couponDiscount)}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRemoveCoupon}
+                          disabled={isProcessing}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="mt-2 flex gap-2">
+                          <Input
+                            id="coupon"
+                            value={couponInput}
+                            onChange={(e) => {
+                              setCouponInput(e.target.value);
+                              setCouponError("");
+                            }}
+                            onKeyDown={(e) => {
+                              // Enter here should apply the coupon, not submit the order form.
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleApplyCoupon();
+                              }
+                            }}
+                            placeholder="Enter coupon code"
+                            className="uppercase placeholder:normal-case"
+                            autoComplete="off"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleApplyCoupon}
+                            disabled={isApplyingCoupon || isProcessing || !couponInput.trim()}
+                            className="shrink-0"
+                          >
+                            {isApplyingCoupon ? <CircleNotch className="h-4 w-4 animate-spin" /> : "Apply"}
+                          </Button>
+                        </div>
+                        {couponError && (
+                          <p className="text-sm text-red-500 mt-1">{couponError}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+
                   {/* Totals */}
                   <div className="mt-6 pt-6 border-t border-border space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
                       <span className="font-bold">{formatPrice(totalPrice)}</span>
                     </div>
+                    {appliedCoupon && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Discount <span className="uppercase">({appliedCoupon.code})</span>
+                        </span>
+                        <span className="font-bold text-green-600">- {formatPrice(couponDiscount)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Shipping</span>
                       <span className="font-bold text-green-600">FREE</span>
@@ -1130,7 +1315,7 @@ const Checkout = () => {
                   <div className="mt-6 pt-6 border-t border-border">
                     <div className="flex justify-between text-lg">
                       <span className="font-bold">Total</span>
-                      <span className="font-bold">{formatPrice(totalPrice)}</span>
+                      <span className="font-bold">{formatPrice(payableTotal)}</span>
                     </div>
                   </div>
 
@@ -1149,7 +1334,7 @@ const Checkout = () => {
                         Processing...
                       </span>
                     ) : (
-                      `PLACE ORDER - ${formatPrice(totalPrice)}`
+                      `PLACE ORDER - ${formatPrice(payableTotal)}`
                     )}
                   </Button>
 

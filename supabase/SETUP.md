@@ -93,8 +93,8 @@ Which function needs what:
 
 | Secret | Needed by |
 | --- | --- |
-| `WOOCOMMERCE_STORE_URL` | all 7 `woocommerce-*`, `home-banners`, both payment-verify functions, `razorpay-webhook` |
-| `WOOCOMMERCE_CONSUMER_KEY` / `_SECRET` | all 7 `woocommerce-*`, payment-verify, `razorpay-webhook` |
+| `WOOCOMMERCE_STORE_URL` | all 8 `woocommerce-*`, `home-banners`, both payment-verify functions, `razorpay-webhook` |
+| `WOOCOMMERCE_CONSUMER_KEY` / `_SECRET` | all 8 `woocommerce-*`, payment-verify, `razorpay-webhook` |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | OTP send/verify, `woocommerce-products`, `woocommerce-reviews`, `verify-cashfree-payment` |
 | `SUPABASE_ANON_KEY` | OTP send/verify, `verify-cashfree-payment` |
 | `RAZORPAY_*` | `create-razorpay-order`, `verify-razorpay-payment`, `razorpay-webhook` |
@@ -121,6 +121,7 @@ supabase functions deploy woocommerce-products          # products, single produ
 supabase functions deploy woocommerce-categories
 supabase functions deploy woocommerce-reviews
 supabase functions deploy woocommerce-orders
+supabase functions deploy woocommerce-coupons              # checkout coupon check
 supabase functions deploy woocommerce-pages
 supabase functions deploy woocommerce-payment-gateways
 supabase functions deploy home-banners                  # hero banners from WordPress
