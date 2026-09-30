@@ -196,11 +196,14 @@ serve(async (req) => {
         expires_at: expiresAt.toISOString(),
         created_at: new Date().toISOString(),
       },
-      { onConflict: 'phone_number' },
+      // phone_key is the column with the UNIQUE constraint; phone_number has none.
+      { onConflict: 'phone_key' },
     );
 
+    // Without a stored row the code can never be verified, so don't send it.
     if (dbError) {
       console.error('Error storing OTP:', dbError);
+      return json({ success: false, error: 'Could not generate OTP. Please try again.' }, 500);
     }
 
     // Authentication template: WATI puts the same code in the copy-code button.

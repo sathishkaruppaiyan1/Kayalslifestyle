@@ -111,7 +111,7 @@ provides are `corsHeaders`, `json`, `sendTemplate`, `toLocalNumber`,
 | # | Name | Lines | Verify JWT | Needs `_shared` |
 | --- | --- | --- | --- | --- |
 | 9 | `whatsapp-send-otp` | 238 | **off** | no (inlined) |
-| 10 | `whatsapp-verify-otp` | 118 | **off** | yes |
+| 10 | `whatsapp-verify-otp` | 144 | **off** | no (inlined) |
 | 11 | `whatsapp-order-notification` | 201 | **off** | no (inlined) |
 
 Extra secrets: `WATI_API_ENDPOINT`, `WATI_ACCESS_TOKEN`, and optionally

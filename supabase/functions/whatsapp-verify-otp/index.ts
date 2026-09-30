@@ -1,6 +1,32 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders, json, toLocalNumber } from "../_shared/whatsapp.ts";
+
+/* ======================================================================
+ * Helpers inlined so this file deploys from the Dashboard editor with no
+ * extra files. Source of truth: supabase/functions/_shared/whatsapp.ts
+ * ====================================================================== */
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+};
+
+/** Strip a number down to the local 10-digit form used as the DB key. */
+function toLocalNumber(phone: string): string {
+  const digits = String(phone ?? '').replace(/\D/g, '').replace(/^0+/, '');
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2);
+  return digits;
+}
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+/* ====================================================================== */
 
 // Verification is provider-agnostic: it only reads the OTP this project stored
 // when the code was sent, so nothing here talks to Meta.
