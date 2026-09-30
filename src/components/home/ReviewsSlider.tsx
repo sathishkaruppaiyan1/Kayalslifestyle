@@ -41,7 +41,7 @@ const ReviewsSlider = ({ images = reviewImages, title = "kayalslifestyle Family 
             <div className="container mx-auto px-4">
                 <div className="flex justify-center text-center">
                     <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
-                        {title}
+                        <span className="section-title-highlight">{title}</span>
                     </h2>
                 </div>
 

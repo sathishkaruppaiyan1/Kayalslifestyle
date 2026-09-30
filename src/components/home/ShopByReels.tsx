@@ -66,7 +66,7 @@ const ShopByReels = ({ reels = REELS, title = "Shop by Reels" }: ShopByReelsProp
       <div className="container mx-auto px-4">
         <div className="flex flex-col items-center text-center mb-8">
           <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
-            {title}
+            <span className="section-title-highlight">{title}</span>
           </h2>
         </div>
 

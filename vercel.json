@@ -1,5 +1,16 @@
 {
   "rewrites": [
+    {
+      "source": "/product/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i)(facebookexternalhit|facebot|twitterbot|whatsapp|linkedinbot|pinterest|slackbot|telegrambot)"
+        }
+      ],
+      "destination": "/api/product-meta?slug=:slug"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

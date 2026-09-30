@@ -109,7 +109,7 @@ const StorySection = ({ story }: { story?: Partial<StoryContent> }) => {
         <div className="flex flex-col items-center text-center mb-8">
           {s.title && (
             <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
-              {s.title}
+              <span className="section-title-highlight">{s.title}</span>
             </h2>
           )}
           {s.subtitle && (

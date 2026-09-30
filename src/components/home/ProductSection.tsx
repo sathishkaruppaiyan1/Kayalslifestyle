@@ -17,7 +17,7 @@ const ProductSection = ({ title, products, viewAllLink, emoji }: ProductSectionP
           {/* Reference sets section titles in plain dark type on white, with a
               gold keyline — no filled slab. */}
           <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
-            <span className="flex items-center gap-2">
+            <span className="section-title-highlight inline-flex items-center gap-2">
               {title} {emoji && <span>{emoji}</span>}
             </span>
           </h2>
