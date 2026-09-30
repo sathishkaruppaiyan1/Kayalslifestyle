@@ -50,7 +50,7 @@ const ReviewsSlider = () => {
         <div className="py-12 bg-muted/30">
             <div className="container mx-auto px-4">
                 <h2 className="section-title rule-gold text-xl font-bold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
-                    What Our Customers Say
+                    <span className="section-title-highlight">What Our Customers Say</span>
                 </h2>
 
                 <Carousel className="w-full max-w-4xl mx-auto">

@@ -96,7 +96,7 @@ const Index = () => {
   // Plugin-driven homepage: sections in admin order, brand story always last.
   if (homepage && homepage.sections.length > 0) {
     return (
-      <Layout>
+      <Layout mainClassName="home-page-surface">
         <DynamicHomepage sections={homepage.sections} />
         <Reveal>
           <StorySection />
@@ -108,7 +108,7 @@ const Index = () => {
   // Still finding out whether the plugin is installed — hold the fold steady.
   if (homepage === undefined) {
     return (
-      <Layout>
+      <Layout mainClassName="home-page-surface">
         <div className="container mx-auto px-4 pt-5 pb-6">
           <div className="flex gap-3 md:gap-5 overflow-hidden">
             {[...Array(8)].map((_, i) => (
@@ -122,7 +122,7 @@ const Index = () => {
   }
 
   return (
-    <Layout>
+    <Layout mainClassName="home-page-surface">
       {/* Circular category strip — sits above the hero, as on the reference site */}
       <CategoryCarousel />
       <HeroBanner />

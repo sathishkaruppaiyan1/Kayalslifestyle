@@ -31,6 +31,9 @@
     --brand-tint: 36 71% 96%; /* #FDF6EC */
     --brand-tint-strong: 36 71% 90%; /* #F8E7CE */
 
+    --heading-highlight: 345 54% 27%; /* premium berry highlight */
+    --heading-highlight-foreground: 36 71% 96%; /* warm ivory text */
+
     --secondary: 0 0% 96%; /* #F5F5F5 */
     --secondary-foreground: 0 0% 20%;
 
@@ -187,6 +190,12 @@
     @apply bg-[hsl(var(--promo-bar))] text-[hsl(var(--promo-bar-foreground))];
   }
 
+  /* Keep the warm ivory ground limited to the Home page main content. */
+  .home-page-surface {
+    --background: 44 69% 92%; /* #F8F1DF */
+    background-color: hsl(var(--background));
+  }
+
   .promo-marquee {
     @apply flex h-9 items-center overflow-hidden;
   }
@@ -278,6 +287,16 @@
   .section-title {
     font-family: var(--font-heading);
     @apply text-xl lg:text-2xl font-extrabold tracking-tight text-foreground;
+  }
+
+  /* The fill belongs to the words, not the full-width heading element. */
+  .section-title-highlight {
+    display: inline-block;
+    padding: 0.3rem 0.75rem 0.35rem;
+    border-radius: 0.4rem;
+    background-color: hsl(var(--heading-highlight));
+    color: hsl(var(--heading-highlight-foreground));
+    line-height: 1.15;
   }
 
   /* Thin gold keyline under a heading. */

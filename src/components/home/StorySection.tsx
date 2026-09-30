@@ -19,7 +19,7 @@ const StorySection = () => {
         {/* Heading */}
         <div className="flex flex-col items-center text-center mb-8">
           <h2 className="section-title rule-gold text-xl font-extrabold text-[#6B1F2A] text-center mb-[10px] md:text-2xl">
-            Our Story
+            <span className="section-title-highlight">Our Story</span>
           </h2>
           <p className="mt-5 text-base lg:text-lg italic text-brand-ink font-medium">
             Two Sisters. One Dream. One Journey.

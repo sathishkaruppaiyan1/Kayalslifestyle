@@ -13,6 +13,7 @@ import type { Product } from "@/types/product";
 import { getProductDetailImage, getGalleryThumbnail } from "@/lib/imageOptimizer";
 import ColorSwatches, { isColorOutOfStock as colorOutOfStock } from "@/components/product/ColorSwatches";
 import { sortSizes } from "@/lib/sizes";
+import { productShareDescription, toAbsoluteUrl } from "@/lib/productMetadata";
 import WoodmartIcon from "@/components/ui/WoodmartIcon";
 
 interface VariationImage {
@@ -27,6 +28,45 @@ const ProductDetail = () => {
   const { data: product, isLoading, error } = useWooCommerceProductById(id || "");
   // Background load: Full gallery images (only for variable products)
   const { data: productWithGallery } = useWooCommerceProductGallery(id || "", product?.type);
+
+  useEffect(() => {
+    if (!product) return;
+
+    const title = product.name;
+    const description = productShareDescription(product.shortDescription, product.description);
+    const url = `${window.location.origin}/product/${encodeURIComponent(product.slug || id || product.id)}`;
+    const image = toAbsoluteUrl(product.images[0] || "");
+    const metadata = [
+      ["property", "og:title", title],
+      ["property", "og:description", description],
+      ["property", "og:url", url],
+      ["property", "og:image", image],
+      ["property", "og:type", "product"],
+      ["name", "twitter:title", title],
+      ["name", "twitter:description", description],
+      ["name", "twitter:url", url],
+      ["name", "twitter:image", image],
+    ] as const;
+    const previousValues = metadata.map(([attribute, key]) => {
+      const element = document.head.querySelector(`meta[${attribute}="${key}"]`);
+      return { element, value: element?.getAttribute("content") };
+    });
+    const canonical = document.head.querySelector('link[rel="canonical"]');
+    const previousCanonical = canonical?.getAttribute("href");
+
+    document.title = title;
+    metadata.forEach(([attribute, key, value]) => {
+      const element = document.head.querySelector(`meta[${attribute}="${key}"]`);
+      element?.setAttribute("content", value);
+    });
+    canonical?.setAttribute("href", url);
+
+    return () => {
+      document.title = "Kayals Lifestyle - Premium Ethnic Fashion for Men & Women | Shop Online India";
+      previousValues.forEach(({ element, value }) => element?.setAttribute("content", value || ""));
+      if (canonical && previousCanonical) canonical.setAttribute("href", previousCanonical);
+    };
+  }, [id, product]);
 
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
