@@ -53,6 +53,7 @@ const ProductDetail = () => {
     });
     const canonical = document.head.querySelector('link[rel="canonical"]');
     const previousCanonical = canonical?.getAttribute("href");
+    const previousTitle = document.title;
 
     document.title = title;
     metadata.forEach(([attribute, key, value]) => {
@@ -62,7 +63,7 @@ const ProductDetail = () => {
     canonical?.setAttribute("href", url);
 
     return () => {
-      document.title = "Kayals Lifestyle - Premium Ethnic Fashion for Men & Women | Shop Online India";
+      document.title = previousTitle;
       previousValues.forEach(({ element, value }) => element?.setAttribute("content", value || ""));
       if (canonical && previousCanonical) canonical.setAttribute("href", previousCanonical);
     };
