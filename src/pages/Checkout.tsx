@@ -423,7 +423,7 @@ const Checkout = () => {
                     description: "Your order has been placed and payment confirmed.",
                   });
 
-                  // Send WhatsApp notification via Meta Cloud API
+                  // Send WhatsApp order confirmation via WATI
                   try {
                     const firstProductImage = items[0]?.product.images?.[0];
                     const whatsappNum = formData.whatsapp || formData.phone;

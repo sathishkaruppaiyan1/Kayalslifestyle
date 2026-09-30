@@ -85,9 +85,8 @@ supabase secrets set \
   CASHFREE_APP_ID="xxx" \
   CASHFREE_SECRET_KEY="xxx" \
   CASHFREE_ENV="sandbox" \
-  WHATSAPP_ACCESS_TOKEN="xxx" \
-  WHATSAPP_PHONE_NUMBER_ID="xxx" \
-  WHATSAPP_API_VERSION="v21.0"
+  WATI_API_ENDPOINT="https://live-mt-server.wati.io/<tenant-id>" \
+  WATI_ACCESS_TOKEN="Bearer xxx"
 ```
 
 Which function needs what:
@@ -100,7 +99,7 @@ Which function needs what:
 | `SUPABASE_ANON_KEY` | OTP send/verify, `verify-cashfree-payment` |
 | `RAZORPAY_*` | `create-razorpay-order`, `verify-razorpay-payment`, `razorpay-webhook` |
 | `CASHFREE_*` | `create-cashfree-order`, `verify-cashfree-payment`, `cashfree-webhook` |
-| `WHATSAPP_*` | `_shared/whatsapp.ts`, used by the `whatsapp-*` functions |
+| `WATI_*` | `_shared/whatsapp.ts` (all `whatsapp-*` functions) and the inlined copy in the `cashfree-*` functions |
 
 `home-banners` needs only `WOOCOMMERCE_STORE_URL`; `pincode-lookup` needs nothing.
 
@@ -127,7 +126,7 @@ supabase functions deploy woocommerce-payment-gateways
 supabase functions deploy home-banners                  # hero banners from WordPress
 supabase functions deploy pincode-lookup                # checkout delivery check
 
-# ── Login (WhatsApp OTP, Meta Cloud API) ───────────────────────────────
+# ── Login (WhatsApp OTP via WATI) ──────────────────────────────────────
 supabase functions deploy whatsapp-send-otp
 supabase functions deploy whatsapp-verify-otp
 

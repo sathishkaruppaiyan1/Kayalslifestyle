@@ -110,12 +110,13 @@ provides are `corsHeaders`, `json`, `sendTemplate`, `toLocalNumber`,
 
 | # | Name | Lines | Verify JWT | Needs `_shared` |
 | --- | --- | --- | --- | --- |
-| 9 | `whatsapp-send-otp` | 87 | **off** | yes |
+| 9 | `whatsapp-send-otp` | 238 | **off** | no (inlined) |
 | 10 | `whatsapp-verify-otp` | 118 | **off** | yes |
-| 11 | `whatsapp-order-notification` | 51 | **off** | yes |
+| 11 | `whatsapp-order-notification` | 201 | **off** | no (inlined) |
 
-Extra secrets: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`,
-`WHATSAPP_API_VERSION` (e.g. `v21.0`).
+Extra secrets: `WATI_API_ENDPOINT`, `WATI_ACCESS_TOKEN`, and optionally
+`WATI_OTP_TEMPLATE` / `WATI_ORDER_TEMPLATE` if the WATI templates are not
+named `kayals_otp` / `kayals_order_confirmation`.
 
 Test by attempting a login on the site — the OTP row should appear in the
 `otps` table.
@@ -162,7 +163,7 @@ files needed (the shared helpers are inlined at the top of each file).
 | 17 | `cashfree-webhook` | **OFF — required** | Cashfree posts here with only an HMAC header; the function verifies it |
 
 Secrets: `CASHFREE_APP_ID`, `CASHFREE_SECRET_KEY`, `CASHFREE_ENV` (`sandbox` or
-`production`). The WhatsApp confirmation reuses `WHATSAPP_*` from Step 3. Get the App ID / Secret from
+`production`). The WhatsApp confirmation reuses `WATI_*` from Step 3. Get the App ID / Secret from
 Cashfree dashboard → **Developers → API Keys** (there are separate test and
 production keys — `CASHFREE_ENV` must match the pair you paste).
 
