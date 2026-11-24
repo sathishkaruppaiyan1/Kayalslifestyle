@@ -76,6 +76,11 @@ const ProductDetail = () => {
   // All state declarations at the top
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  // Selections for extra variation attributes (e.g. Model), keyed by attribute name
+  const [selectedExtras, setSelectedExtras] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setSelectedExtras({});
+  }, [product?.id]);
   const [showValidation, setShowValidation] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
@@ -156,6 +161,26 @@ const ProductDetail = () => {
     const sizeVariations = product.variations.filter((v) => v.size === size);
     if (sizeVariations.length === 0) return false;
     return sizeVariations.every((v) => v.stockStatus === 'outofstock' || (v.manageStock && (v.stockQuantity === 0 || v.stockQuantity === null)));
+  };
+
+  const extraAttributes = product?.extraAttributes ?? [];
+
+  // An option is unavailable when every variation carrying it (and matching the
+  // other current selections) is out of stock.
+  const isExtraOptionOutOfStock = (attrName: string, option: string): boolean => {
+    if (!product?.variations?.length) return false;
+    const candidates = product.variations.filter((v) => {
+      if (v.extras?.[attrName] !== option && (v.extras?.[attrName] ?? "") !== "") return false;
+      if (selectedColor && v.color.toLowerCase() !== selectedColor.toLowerCase()) return false;
+      if (selectedSize && v.size !== selectedSize) return false;
+      return Object.entries(selectedExtras).every(
+        ([k, val]) => k === attrName || !v.extras?.[k] || v.extras[k] === val,
+      );
+    });
+    if (candidates.length === 0) return false;
+    return candidates.every(
+      (v) => v.stockStatus === "outofstock" || (v.manageStock && (v.stockQuantity === 0 || v.stockQuantity === null)),
+    );
   };
 
   const availableStock = getAvailableStock();
@@ -456,6 +481,18 @@ const ProductDetail = () => {
       return;
     }
 
+    for (const attr of extraAttributes) {
+      if (!selectedExtras[attr.name]) {
+        setShowValidation(true);
+        toast.error(`Please select a ${attr.name.toLowerCase()}`);
+        return;
+      }
+      if (isExtraOptionOutOfStock(attr.name, selectedExtras[attr.name])) {
+        toast.error(`${attr.name} ${selectedExtras[attr.name]} is out of stock`);
+        return;
+      }
+    }
+
     // Check if selected size/color combination is out of stock
     if (selectedSize && isSizeOutOfStock(selectedSize)) {
       toast.error(`Size ${selectedSize} is out of stock`);
@@ -475,7 +512,13 @@ const ProductDetail = () => {
       return;
     }
 
-    addToCart(product, quantity, selectedSize || undefined, selectedColor || undefined);
+    addToCart(
+      product,
+      quantity,
+      selectedSize || undefined,
+      selectedColor || undefined,
+      extraAttributes.length > 0 ? selectedExtras : undefined,
+    );
 
     if (buyNow) {
       navigate("/cart");
@@ -711,6 +754,46 @@ const ProductDetail = () => {
                 </div>
               </div>
             )}
+
+            {/* Extra variation attributes (Model, Material, ...) */}
+            {extraAttributes.map((attr) => {
+              const missing = showValidation && !selectedExtras[attr.name];
+              return (
+                <div key={attr.name}>
+                  <p className={`text-sm font-medium mb-3 ${missing ? "text-red-600" : ""}`}>
+                    {attr.name}
+                    {selectedExtras[attr.name] && (
+                      <span className="ml-2 font-normal text-muted-foreground">{selectedExtras[attr.name]}</span>
+                    )}
+                    {missing && <span className="ml-2 text-red-600 animate-pulse">(Required)</span>}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {attr.options.map((option) => {
+                      const outOfStock = isExtraOptionOutOfStock(attr.name, option);
+                      const active = selectedExtras[attr.name] === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          disabled={outOfStock}
+                          onClick={() => {
+                            setSelectedExtras((prev) => ({ ...prev, [attr.name]: option }));
+                            if (showValidation) setShowValidation(false);
+                          }}
+                          className={`min-h-12 px-4 py-2 border text-sm font-bold transition-all ${active
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-black hover:bg-muted bg-background"
+                            } ${outOfStock ? "opacity-40 cursor-not-allowed line-through" : ""}`}
+                          title={outOfStock ? "Out of Stock" : ""}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
 
             {/* Quantity Selector */}
             <div className="flex items-center gap-4" style={{ paddingTop: '10px' }}>

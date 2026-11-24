@@ -21,9 +21,16 @@ export interface Variation {
   id: number;
   color: string;
   size: string | null;
+  /** Values of any other variation attributes (e.g. { Model: "iPhone 15" }) */
+  extras?: Record<string, string>;
   stockQuantity: number | null;
   stockStatus: string;
   manageStock: boolean;
+}
+
+export interface ExtraAttribute {
+  name: string;
+  options: string[];
 }
 
 export interface Product {
@@ -40,6 +47,8 @@ export interface Product {
   images: string[];
   variationImages?: VariationImages[];
   variations?: Variation[];
+  /** Variation attributes other than color/size (e.g. Model) */
+  extraAttributes?: ExtraAttribute[];
   description: string;
   shortDescription?: string;
   fabric?: string;

@@ -238,8 +238,23 @@ serve(async (req) => {
       }
     }
 
+    // Any variation attribute other than color/size (e.g. "Model", "Material") is
+    // exposed generically so the storefront can render a selector for it.
+    const isCoreAttr = (name: string) => ['color', 'colour', 'size'].includes((name || '').toLowerCase().trim());
+    const getExtraAttributes = (p: any): { name: string; options: string[] }[] =>
+      (p.attributes || [])
+        .filter((a: any) => a.variation && !isCoreAttr(a.name) && Array.isArray(a.options) && a.options.length > 0)
+        .map((a: any) => ({ name: String(a.name).trim(), options: a.options.map((o: any) => String(o).trim()) }));
+    const getVariationExtras = (v: any): Record<string, string> => {
+      const out: Record<string, string> = {};
+      for (const a of v.attributes || []) {
+        if (!isCoreAttr(a.name)) out[String(a.name).trim()] = String(a.option || '').trim();
+      }
+      return out;
+    };
+
     // Helper function to fetch variations for a product
-    const fetchVariations = async (productId: string): Promise<any[]> => {
+    const fetchVariations =async (productId: string): Promise<any[]> => {
       try {
         const variationsUrl = `${storeUrl}/wp-json/wc/v3/products/${productId}/variations?per_page=100`;
         console.log(`Fetching variations from: ${variationsUrl}`);
@@ -611,6 +626,7 @@ serve(async (req) => {
             id: variation.id,
             color: colorAttr?.option?.trim() || 'Default',
             size: sizeAttr?.option?.trim() || null,
+            extras: getVariationExtras(variation),
             stockQuantity: variation.stock_quantity !== null && variation.stock_quantity !== undefined
               ? parseInt(variation.stock_quantity)
               : null,
@@ -753,6 +769,7 @@ serve(async (req) => {
         averageRating: product.average_rating,
         ratingCount: product.rating_count,
         variations: allVariationsData.length > 0 ? allVariationsData : undefined,
+        extraAttributes: getExtraAttributes(product),
       };
     };
 
@@ -885,10 +902,12 @@ serve(async (req) => {
             id: v.id,
             color: v.attributes?.find((a: any) => a.name?.toLowerCase() === 'color' || a.name?.toLowerCase() === 'colour')?.option?.trim() || 'Default',
             size: v.attributes?.find((a: any) => a.name?.toLowerCase() === 'size')?.option?.trim() || null,
+            extras: getVariationExtras(v),
             stockQuantity: v.stock_quantity !== null && v.stock_quantity !== undefined ? parseInt(v.stock_quantity) : null,
             stockStatus: v.stock_status || 'instock',
             manageStock: v.manage_stock || false,
           })),
+          extraAttributes: getExtraAttributes(responseData),
         }];
         console.log(`Fetched product (fast path): ${responseData.name}`);
       } else {
@@ -1038,10 +1057,12 @@ serve(async (req) => {
               id: v.id,
               color: v.attributes?.find((a: any) => a.name?.toLowerCase() === 'color' || a.name?.toLowerCase() === 'colour')?.option?.trim() || 'Default',
               size: v.attributes?.find((a: any) => a.name?.toLowerCase() === 'size')?.option?.trim() || null,
+              extras: getVariationExtras(v),
               stockQuantity: v.stock_quantity !== null && v.stock_quantity !== undefined ? parseInt(v.stock_quantity) : null,
               stockStatus: v.stock_status || 'instock',
               manageStock: v.manage_stock || false,
             })),
+            extraAttributes: getExtraAttributes(product),
           };
         });
         console.log(`Fetched ${responseData.length} products (fast path with variation images, cached for ${LIST_CACHE_TTL/1000}s)`);

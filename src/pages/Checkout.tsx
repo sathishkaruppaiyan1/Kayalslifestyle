@@ -352,7 +352,8 @@ const Checkout = () => {
           total: String(item.product.price * item.quantity),
           meta_data: [
             ...(item.size ? [{ key: "Size", value: item.size }] : []),
-            ...(item.color ? [{ key: "Color", value: item.color }] : [])
+            ...(item.color ? [{ key: "Color", value: item.color }] : []),
+            ...Object.entries(item.extras || {}).map(([key, value]) => ({ key, value }))
           ]
         })),
         ...(appliedCoupon ? { coupon_lines: [{ code: appliedCoupon.code }] } : {}),
@@ -1211,7 +1212,7 @@ const Checkout = () => {
                   {/* Items */}
                   <div className="space-y-4 max-h-64 overflow-auto">
                     {items.map((item) => (
-                      <div key={`${item.product.id}-${item.size}`} className="flex gap-4">
+                      <div key={`${item.product.id}-${item.size}-${item.color}-${JSON.stringify(item.extras || {})}`} className="flex gap-4">
                         <div className="relative w-16 h-20 bg-background flex-shrink-0 overflow-hidden">
                           <img
                             src={item.image || item.product.images[0] || "/placeholder.svg"}
@@ -1224,9 +1225,9 @@ const Checkout = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm truncate">{item.product.name}</p>
-                          {(item.size || item.color) && (
+                          {(item.size || item.color || item.extras) && (
                             <p className="text-xs text-muted-foreground uppercase">
-                              {[item.size, item.color].filter(Boolean).join(", ")}
+                              {[item.size, item.color, ...Object.values(item.extras || {})].filter(Boolean).join(", ")}
                             </p>
                           )}
                           <p className="font-bold text-sm mt-1">{formatPrice(item.product.price * item.quantity)}</p>

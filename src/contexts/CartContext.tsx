@@ -6,9 +6,30 @@ interface CartItem {
   quantity: number;
   size?: string;
   color?: string;
+  extras?: Record<string, string>;
   image?: string;
   variationId?: number;
 }
+
+type Extras = Record<string, string> | undefined;
+
+// Two extras maps are the same selection when they hold the same key/values.
+export const sameExtras = (a: Extras, b: Extras): boolean => {
+  const ea = Object.entries(a || {});
+  const eb = Object.entries(b || {});
+  return ea.length === eb.length && ea.every(([k, v]) => (b || {})[k] === v);
+};
+
+// Does a product variation match the chosen size/color/extras?
+const variationMatches = (
+  v: { size: string | null; color: string; extras?: Record<string, string> },
+  size?: string,
+  color?: string,
+  extras?: Extras,
+) =>
+  (!size || v.size === size) &&
+  (!color || v.color.toLowerCase() === color.toLowerCase()) &&
+  Object.entries(extras || {}).every(([k, val]) => !v.extras?.[k] || v.extras[k] === val);
 
 export interface StockIssue {
   productId: string;
@@ -22,9 +43,9 @@ export interface StockIssue {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, quantity?: number, size?: string, color?: string) => void;
-  removeFromCart: (productId: string, size?: string, color?: string) => void;
-  updateQuantity: (productId: string, quantity: number, size?: string, color?: string) => void;
+  addToCart: (product: Product, quantity?: number, size?: string, color?: string, extras?: Record<string, string>) => void;
+  removeFromCart: (productId: string, size?: string, color?: string, extras?: Record<string, string>) => void;
+  updateQuantity: (productId: string, quantity: number, size?: string, color?: string, extras?: Record<string, string>) => void;
   clearCart: () => void;
   validateCartStock: () => Promise<StockIssue[]>;
   totalItems: number;
@@ -126,9 +147,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Check variation-level stock for variable products
-      if (freshProduct.type === 'variable' && freshProduct.variations && item.size) {
+      if (freshProduct.type === 'variable' && freshProduct.variations && (item.size || item.extras)) {
         const matchingVariation = freshProduct.variations.find(
-          (v) => v.size === item.size && (!item.color || v.color.toLowerCase() === (item.color || '').toLowerCase())
+          (v) => variationMatches(v, item.size, item.color, item.extras)
         );
 
         if (matchingVariation?.stockStatus === 'outofstock') {
@@ -227,11 +248,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return issues;
   }, [items]);
 
-  const addToCart = (product: Product, quantity = 1, size?: string, color?: string) => {
+  const addToCart = (product: Product, quantity = 1, size?: string, color?: string, extras?: Extras) => {
     // Block adding out-of-stock variations (stockStatus check, independent of stockQuantity)
-    if (product.type === 'variable' && product.variations && size) {
+    if (product.type === 'variable' && product.variations && (size || extras)) {
       const matchingVariation = product.variations.find(
-        (v) => v.size === size && (!color || v.color.toLowerCase() === (color || '').toLowerCase())
+        (v) => variationMatches(v, size, color, extras)
       );
       if (matchingVariation?.stockStatus === 'outofstock') {
         import('sonner').then(({ toast }) => {
@@ -268,7 +289,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     // Check stock before adding
     setItems((prev) => {
       const existingIndex = prev.findIndex(
-        (item) => item.product.id === product.id && item.size === size && item.color === color
+        (item) => item.product.id === product.id && item.size === size && item.color === color && sameExtras(item.extras, extras)
       );
 
       const currentQuantity = existingIndex > -1 ? prev[existingIndex].quantity : 0;
@@ -289,11 +310,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       
       // Get variation ID
       let variationId: number | undefined;
-      if (product.type === 'variable' && (size || color)) {
+      if (product.type === 'variable' && (size || color || extras)) {
         const matchingVariation = product.variations?.find(
-          (v) => 
-            (!size || v.size === size) && 
-            (!color || v.color.toLowerCase() === color.toLowerCase())
+          (v) => variationMatches(v, size, color, extras)
         );
         variationId = matchingVariation?.id;
       }
@@ -326,29 +345,29 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         return updated;
       }
 
-      return [...prev, { product, quantity, size, color, image, variationId }];
+      return [...prev, { product, quantity, size, color, extras, image, variationId }];
     });
     setIsOpen(true);
   };
 
-  const removeFromCart = (productId: string, size?: string, color?: string) => {
+  const removeFromCart = (productId: string, size?: string, color?: string, extras?: Extras) => {
     setItems((prev) =>
       prev.filter(
         (item) =>
-          !(item.product.id === productId && item.size === size && item.color === color)
+          !(item.product.id === productId && item.size === size && item.color === color && sameExtras(item.extras, extras))
       )
     );
   };
 
-  const updateQuantity = (productId: string, quantity: number, size?: string, color?: string) => {
+  const updateQuantity = (productId: string, quantity: number, size?: string, color?: string, extras?: Extras) => {
     if (quantity <= 0) {
-      removeFromCart(productId, size, color);
+      removeFromCart(productId, size, color, extras);
       return;
     }
 
     setItems((prev) => {
       const item = prev.find(
-        (item) => item.product.id === productId && item.size === size && item.color === color
+        (item) => item.product.id === productId && item.size === size && item.color === color && sameExtras(item.extras, extras)
       );
 
       if (!item) return prev;
@@ -380,7 +399,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       }
 
       return prev.map((item) =>
-        item.product.id === productId && item.size === size && item.color === color
+        item.product.id === productId && item.size === size && item.color === color && sameExtras(item.extras, extras)
           ? { ...item, quantity }
           : item
       );

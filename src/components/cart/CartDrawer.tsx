@@ -48,7 +48,7 @@ const CartDrawer = () => {
           ) : (
             <div className="space-y-4">
               {items.map((item) => (
-                <div key={`${item.product.id}-${item.size}`} className="flex gap-4 pb-4 border-b border-border">
+                <div key={`${item.product.id}-${item.size}-${item.color}-${JSON.stringify(item.extras || {})}`} className="flex gap-4 pb-4 border-b border-border">
                   <div className="w-20 h-24 bg-muted flex-shrink-0 overflow-hidden">
                     <img
                       src={item.image || item.product.images[0] || "/placeholder.svg"}
@@ -59,9 +59,9 @@ const CartDrawer = () => {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-sm truncate">{item.product.name}</h3>
                     {/* Variations - Single line "S, BLUE" */}
-                    {(item.size || item.color) && (
+                    {(item.size || item.color || item.extras) && (
                       <p className="text-xs text-muted-foreground mt-1 uppercase">
-                        {[item.size, item.color].filter(Boolean).join(", ")}
+                        {[item.size, item.color, ...Object.values(item.extras || {})].filter(Boolean).join(", ")}
                       </p>
                     )}
                     <p className="font-bold text-sm mt-1">{formatPrice(item.product.price)}</p>
@@ -69,21 +69,21 @@ const CartDrawer = () => {
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-border">
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.size, item.color)}
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.size, item.color, item.extras)}
                           className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors"
                         >
                           <Minus className="h-3 w-3" />
                         </button>
                         <span className="w-8 text-center text-sm font-bold">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.size, item.color)}
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1, item.size, item.color, item.extras)}
                           className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>
                       <button
-                        onClick={() => removeFromCart(item.product.id, item.size, item.color)}
+                        onClick={() => removeFromCart(item.product.id, item.size, item.color, item.extras)}
                         className="text-xs font-medium border border-border px-2 py-1 hover:bg-muted hover:text-destructive transition-colors flex items-center gap-1"
                       >
                         <Trash className="h-3 w-3" />

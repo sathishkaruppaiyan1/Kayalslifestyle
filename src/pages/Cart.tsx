@@ -123,7 +123,7 @@ const Cart = () => {
             {/* Items */}
             <div className="divide-y divide-border">
               {items.map((item) => (
-                <div key={`${item.product.id}-${item.size}`} className="py-6">
+                <div key={`${item.product.id}-${item.size}-${item.color}-${JSON.stringify(item.extras || {})}`} className="py-6">
                   <div className="grid grid-cols-12 gap-4 items-center">
                     {/* Product */}
                     <div className="col-span-12 md:col-span-6">
@@ -142,13 +142,13 @@ const Cart = () => {
                           >
                             {item.product.name}
                           </Link>
-                          {(item.size || item.color) && (
+                          {(item.size || item.color || item.extras) && (
                             <p className="text-sm text-muted-foreground mt-1 uppercase text-left">
-                              {[item.size, item.color].filter(Boolean).join(", ")}
+                              {[item.size, item.color, ...Object.values(item.extras || {})].filter(Boolean).join(", ")}
                             </p>
                           )}
                           <button
-                            onClick={() => removeFromCart(item.product.id, item.size, item.color)}
+                            onClick={() => removeFromCart(item.product.id, item.size, item.color, item.extras)}
                             className="text-sm text-muted-foreground hover:text-destructive hover:border-destructive transition-colors mt-3 flex items-center gap-2 group border border-border rounded-md px-2 py-1"
                           >
                             <Trash className="h-4 w-4 group-hover:text-destructive transition-colors" />
@@ -168,7 +168,7 @@ const Cart = () => {
                     <div className="col-span-4 md:col-span-2 flex justify-center">
                       <div className="flex items-center border border-border">
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.size, item.color)}
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1, item.size, item.color, item.extras)}
                           className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors"
                         >
                           <Minus className="h-3 w-3" />
@@ -195,7 +195,7 @@ const Cart = () => {
                               toast.error(`Only ${availableStock} items available in stock`);
                               return;
                             }
-                            updateQuantity(item.product.id, item.quantity + 1, item.size, item.color);
+                            updateQuantity(item.product.id, item.quantity + 1, item.size, item.color, item.extras);
                           }}
                           className="w-8 h-8 flex items-center justify-center hover:bg-muted transition-colors"
                           disabled={(() => {
